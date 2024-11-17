@@ -1,0 +1,90 @@
+﻿{
+   "CodeGenerationMode": 4,
+   "ContextClassName": "ssAppDBContext",
+   "ContextNamespace": null,
+   "FilterSchemas": false,
+   "IncludeConnectionString": false,
+   "ModelNamespace": null,
+   "OutputContextPath": null,
+   "OutputPath": "EFModels",
+   "PreserveCasingWithRegex": true,
+   "ProjectRootNamespace": "ssAppModels",
+   "Schemas": null,
+   "SelectedHandlebarsLanguage": 2,
+   "SelectedToBeGenerated": 0,
+   "T4TemplatePath": null,
+   "Tables": [
+      {
+         "Name": "[dbo].[Delivery]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ErrorLog]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[OrderDetail]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[OrderHeader]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Product]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ProductSKU]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[SetProductSKU]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Shipment]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ShipmentDetail]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[Shop]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ShopTokens]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[SKUConversion]",
+         "ObjectType": 0
+      }
+   ],
+   "UiHint": null,
+   "UncountableWords": null,
+   "UseAsyncStoredProcedureCalls": true,
+   "UseBoolPropertiesWithoutDefaultSql": false,
+   "UseDatabaseNames": false,
+   "UseDateOnlyTimeOnly": true,
+   "UseDbContextSplitting": false,
+   "UseDecimalDataAnnotationForSprocResult": true,
+   "UseFluentApiOnly": false,
+   "UseHandleBars": false,
+   "UseHierarchyId": false,
+   "UseInflector": true,
+   "UseLegacyPluralizer": false,
+   "UseManyToManyEntity": false,
+   "UseNoDefaultConstructor": true,
+   "UseNoNavigations": false,
+   "UseNoObjectFilter": false,
+   "UseNodaTime": false,
+   "UseNullableReferences": false,
+   "UsePrefixNavigationNaming": false,
+   "UseSchemaFolders": false,
+   "UseSchemaNamespaces": false,
+   "UseSpatial": false,
+   "UseT4": false
+}
