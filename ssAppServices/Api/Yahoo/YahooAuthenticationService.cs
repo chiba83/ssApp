@@ -10,38 +10,48 @@ public class YahooAuthenticationService
 {
     private readonly ssAppDBContext _dbContext;
     private readonly ApiClientHandler _apiClienthHandler;
+    private readonly ErrorLogger _errorLogger;
     private readonly string tokenEndpoint;
     private const int RefreshTokenExpiryDays = 28;
     private const int BufferMinutes = 5; // バッファ期間（5分）
 
-    public YahooAuthenticationService(ssAppDBContext dbContext, IConfiguration configuration, ApiClientHandler apiClienthHandler)
+    public YahooAuthenticationService(ssAppDBContext dbContext, IConfiguration configuration, ApiClientHandler apiClienthHandler, ErrorLogger errorLogger)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _apiClienthHandler = apiClienthHandler ?? throw new ArgumentNullException(nameof(apiClienthHandler));
+        _errorLogger = errorLogger ?? throw new ArgumentNullException(nameof(errorLogger));
         tokenEndpoint = configuration["MallSettings:Yahoo:Endpoints:AccessToken"]
             ?? throw new Exception("エンドポイント設定エラー。URLを設定してください。");
     }
 
     public async Task<string> GetValidAccessTokenAsync(YahooShop shopCode)
     {
-        // ShopToken を取得
-        var shopToken = await GetShopTokenAsync(shopCode);
-
-        // リフレッシュトークン期限切れ判定
-        if (shopToken.RtexpiresAt <= DateTime.Now.AddMinutes(BufferMinutes))
+        try
         {
-            if (string.IsNullOrEmpty(shopToken.AuthCode))
-                throw new Exception("リフレッシュトークンが期限切れ、かつ新規トークン取得のための許可コードがNullです。");
+            // ShopToken を取得
+            var shopToken = await GetShopTokenAsync(shopCode);
 
-            return await AuthorizeAsync(shopToken)
-                ?? throw new Exception("リフレッシュトークンが期限切れ、かつ新規トークン取得にも失敗しました。許可コードを再取得してください。");
+            // リフレッシュトークン期限切れ判定
+            if (shopToken.RtexpiresAt <= DateTime.Now.AddMinutes(BufferMinutes))
+            {
+                if (string.IsNullOrEmpty(shopToken.AuthCode))
+                    throw new Exception("リフレッシュトークンが期限切れ、かつ新規トークン取得のための許可コードがNullです。");
+
+                return await AuthorizeAsync(shopToken)
+                    ?? throw new Exception("リフレッシュトークンが期限切れ、かつ新規トークン取得にも失敗しました。許可コードを再取得してください.");
+            }
+
+            // アクセストークン期限切れ判定
+            if (shopToken.AtexpiresAt <= DateTime.Now.AddMinutes(BufferMinutes))
+                return await RefreshAccessTokenAsync(shopToken);
+
+            return shopToken.AccessToken;
         }
-
-        // アクセストークン期限切れ判定
-        if (shopToken.AtexpiresAt <= DateTime.Now.AddMinutes(BufferMinutes))
-            return await RefreshAccessTokenAsync(shopToken);
-
-        return shopToken.AccessToken;
+        catch (Exception ex)
+        {
+            await _errorLogger.LogErrorAsync(ex, nameof(YahooAuthenticationService));
+            throw;
+        }
     }
 
     private async Task<ShopToken> GetShopTokenAsync(YahooShop shopCode)
@@ -76,29 +86,37 @@ public class YahooAuthenticationService
 
     private async Task<string> RequestAccessTokenAsync(Dictionary<string, string> parameters, ShopToken shopToken, bool isRefresh)
     {
-        string authHeader = shopToken.AppType == "server"
-            ? Convert.ToBase64String(Encoding.UTF8.GetBytes($"{shopToken.ClientId}:{shopToken.Secret}"))
-            : shopToken.ClientId;
+        try
+        {
+            string authHeader = shopToken.AppType == "server"
+                ? Convert.ToBase64String(Encoding.UTF8.GetBytes($"{shopToken.ClientId}:{shopToken.Secret}"))
+                : shopToken.ClientId;
 
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint);
-        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Basic", authHeader);
-        requestMessage.Content = new FormUrlEncodedContent(parameters);
-        var response = await _apiClienthHandler.SendAsync(requestMessage);
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint);
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Basic", authHeader);
+            requestMessage.Content = new FormUrlEncodedContent(parameters);
+            var response = await _apiClienthHandler.SendAsync(requestMessage);
 
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"HTTP Status Code: {response.StatusCode}");
-        var tokenData = JObject.Parse(await response.Content.ReadAsStringAsync());
+            if (!response.IsSuccessStatusCode)
+                throw new Exception($"HTTP Status Code: {response.StatusCode}");
+            var tokenData = JObject.Parse(await response.Content.ReadAsStringAsync());
 
-        string accessToken = tokenData["access_token"]?.ToString()
-            ?? throw new Exception("リクエストは成功していますが、Access Tokenが取得できません。");
+            string accessToken = tokenData["access_token"]?.ToString()
+                ?? throw new Exception("リクエストは成功していますが、Access Tokenが取得できません。");
 
-        string? refreshToken = isRefresh ? null : tokenData["refresh_token"]?.ToString();
-        if (!isRefresh && string.IsNullOrEmpty(refreshToken))
-            throw new Exception("リクエストは成功していますが、Refresh Tokenが取得できません。");
-        int expiresIn = tokenData["expires_in"]?.ToObject<int>() ?? 3600;
+            string? refreshToken = isRefresh ? null : tokenData["refresh_token"]?.ToString();
+            if (!isRefresh && string.IsNullOrEmpty(refreshToken))
+                throw new Exception("リクエストは成功していますが、Refresh Tokenが取得できません。");
+            int expiresIn = tokenData["expires_in"]?.ToObject<int>() ?? 3600;
 
-        await UpdateTokensInDatabase(shopToken, accessToken, refreshToken, expiresIn, isRefresh);
-        return accessToken;
+            await UpdateTokensInDatabase(shopToken, accessToken, refreshToken, expiresIn, isRefresh);
+            return accessToken;
+        }
+        catch (Exception ex)
+        {
+            await _errorLogger.LogErrorAsync(ex, nameof(YahooAuthenticationService));
+            throw;
+        }
     }
 
     private async Task UpdateTokensInDatabase(ShopToken shopToken, string accessToken, string? refreshToken, int expiresInSeconds, bool isRefresh)

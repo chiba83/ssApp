@@ -18,12 +18,17 @@ public class Startup
         // DbContext の登録
         services.AddDbContext<ssAppDBContext>(options =>
             options.UseSqlServer(_configuration.GetConnectionString("ssAppDBContext")));
-    
+
         // ErrorLogger の登録
         services.AddSingleton<ErrorLogger>();
 
         // ApiClient の登録
-        services.AddSingleton<ApiClientHandler>();
+        services.AddHttpClient<ApiClientHandler>()
+            .ConfigureHttpClient(client =>
+            {
+                client.BaseAddress = new Uri(_configuration["ApiSettings:BaseUrl"]);
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
 
         // YahooAuthenticationService の登録
         services.AddScoped<YahooAuthenticationService>(provider =>
@@ -31,7 +36,8 @@ public class Startup
             var dbContext = provider.GetRequiredService<ssAppDBContext>();
             var configuration = provider.GetRequiredService<IConfiguration>();
             var apiClienthHandler = provider.GetRequiredService<ApiClientHandler>();
-            return new YahooAuthenticationService(dbContext, configuration, apiClienthHandler);
+            var errorLogger = provider.GetRequiredService<ErrorLogger>();
+            return new YahooAuthenticationService(dbContext, configuration, apiClienthHandler, errorLogger);
         });
     }
 
