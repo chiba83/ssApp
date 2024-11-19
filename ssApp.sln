@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35506.116 d17.12
+VisualStudioVersion = 17.12.35506.116
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssAppModels", "ssAppModels\ssAppModels.csproj", "{FDB0895A-6F58-4669-B99C-38D89F934250}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssAppServices", "ssAppServices\ssAppServices.csproj", "{37AFEBD8-81B0-4396-AF6B-AEF065CC881F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssAppTests", "ssAppTests\ssAppTests.csproj", "{C58EA7AD-C8B6-4116-AE25-5310D8753F55}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssAppCommon", "ssAppCommon\ssAppCommon.csproj", "{105761D3-02B2-41AC-9AEE-F2B359D711A0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{C58EA7AD-C8B6-4116-AE25-5310D8753F55}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C58EA7AD-C8B6-4116-AE25-5310D8753F55}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C58EA7AD-C8B6-4116-AE25-5310D8753F55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{105761D3-02B2-41AC-9AEE-F2B359D711A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{105761D3-02B2-41AC-9AEE-F2B359D711A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{105761D3-02B2-41AC-9AEE-F2B359D711A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{105761D3-02B2-41AC-9AEE-F2B359D711A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

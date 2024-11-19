@@ -3,49 +3,41 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ssAppModels.EFModels;
+using ssAppCommon.Logging;
+using ssAppServices;
+using ssAppServices.Api;
 
-public class Startup
+namespace ssAppServices
 {
-    private readonly IConfiguration _configuration;
-
-    public Startup(IConfiguration configuration)
+    public class Startup
     {
-        _configuration = configuration;
-    }
+        private readonly IConfiguration _configuration;
 
-    public void ConfigureServices(IServiceCollection services)
-    {
-        // DbContext の登録
-        services.AddDbContext<ssAppDBContext>(options =>
-            options.UseSqlServer(_configuration.GetConnectionString("ssAppDBContext")));
-
-        // ErrorLogger の登録
-        services.AddSingleton<ErrorLogger>();
-
-        // ApiClient の登録
-        services.AddHttpClient<ApiClientHandler>()
-            .ConfigureHttpClient(client =>
-            {
-                client.BaseAddress = new Uri(_configuration["ApiSettings:BaseUrl"]);
-                client.Timeout = TimeSpan.FromSeconds(30);
-            });
-
-        // YahooAuthenticationService の登録
-        services.AddScoped<YahooAuthenticationService>(provider =>
+        public Startup(IConfiguration configuration)
         {
-            var dbContext = provider.GetRequiredService<ssAppDBContext>();
-            var configuration = provider.GetRequiredService<IConfiguration>();
-            var apiClienthHandler = provider.GetRequiredService<ApiClientHandler>();
-            var errorLogger = provider.GetRequiredService<ErrorLogger>();
-            return new YahooAuthenticationService(dbContext, configuration, apiClienthHandler, errorLogger);
-        });
-    }
+            _configuration = configuration;
+        }
 
-    public void Configure(IHostBuilder hostBuilder)
-    {
-        hostBuilder.ConfigureAppConfiguration((context, config) =>
+        public void ConfigureServices(IServiceCollection services)
         {
-            config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-        });
+            // DbContext の登録
+            services.AddDbContext<ssAppDBContext>(options =>
+                options.UseSqlServer(_configuration.GetConnectionString("ssAppDBContext")));
+
+            // ApiClient の登録
+            services.AddHttpClient<ApiClientHandler>();
+
+            // ErrorLogger の登録
+            services.AddSingleton<ErrorLogger>();
+
+            // ServiceErrHandler の登録
+            services.AddSingleton<ServiceErrHandler>();
+
+            // MallSettings の登録
+            services.Configure<MallSettings>(_configuration.GetSection("MallSettings"));
+
+            // YahooAuthenticationService の登録
+            services.AddScoped<YahooAuthenticationService>();
+        }
     }
 }

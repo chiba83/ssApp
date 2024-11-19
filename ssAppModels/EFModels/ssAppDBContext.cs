@@ -61,16 +61,15 @@ public partial class ssAppDBContext : DbContext
 
         modelBuilder.Entity<ErrorLog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ErrorLog__3214EC27FFFFA014");
+            entity.HasKey(e => e.Id).HasName("PK__ErrorLog__3214EC27C6F6F83E");
 
-            entity.Property(e => e.Id).HasComment("一意の識別子（自動採番）");
-            entity.Property(e => e.AdditionalInfo).HasComment("エラーに関する任意の追加情報");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasComment("エラーが記録された日時");
-            entity.Property(e => e.ErrorMessage).HasComment("エラー内容を記録するメッセージ");
-            entity.Property(e => e.ErrorSource).HasComment("エラーの発生元（例: アプリケーション名、サービス名）");
-            entity.Property(e => e.StackTrace).HasComment("エラーに関連するスタックトレース");
+            entity.Property(e => e.Id).HasComment("自動インクリメントのプライマリキー");
+            entity.Property(e => e.AdditionalInfo).HasComment("任意の補足情報（リクエストデータなど）");
+            entity.Property(e => e.CreatedAt).HasComment("レコードの作成日時（記録時点）");
+            entity.Property(e => e.ErrorMessage).HasComment("エラーメッセージ");
+            entity.Property(e => e.MethodName).HasComment("エラーが発生したメソッド名");
+            entity.Property(e => e.ServiceName).HasComment("エラーが発生したサービス名やモジュール名");
+            entity.Property(e => e.StackTrace).HasComment("エラーのスタックトレース");
         });
 
         modelBuilder.Entity<OrderDetail>(entity =>

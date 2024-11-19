@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ssApp.Models
+namespace ssAppModels
 {
     // ショップコードを管理する列挙型
     public enum YahooShop

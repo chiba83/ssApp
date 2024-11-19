@@ -10,40 +10,47 @@ namespace ssAppModels.EFModels;
 
 [Table("ErrorLog")]
 [Index("CreatedAt", Name = "IX_ErrorLog_CreatedAt")]
+[Index("MethodName", Name = "IX_ErrorLog_MethodName")]
+[Index("ServiceName", Name = "IX_ErrorLog_ServiceName")]
 public partial class ErrorLog
 {
     /// <summary>
-    /// 一意の識別子（自動採番）
+    /// 自動インクリメントのプライマリキー
     /// </summary>
     [Key]
     [Column("ID")]
     public int Id { get; set; }
 
     /// <summary>
-    /// エラー内容を記録するメッセージ
+    /// エラーが発生したサービス名やモジュール名
+    /// </summary>
+    public string ServiceName { get; set; }
+
+    /// <summary>
+    /// エラーが発生したメソッド名
+    /// </summary>
+    public string MethodName { get; set; }
+
+    /// <summary>
+    /// エラーメッセージ
     /// </summary>
     [Required]
     public string ErrorMessage { get; set; }
 
     /// <summary>
-    /// エラーに関連するスタックトレース
+    /// エラーのスタックトレース
     /// </summary>
+    [Required]
     public string StackTrace { get; set; }
 
     /// <summary>
-    /// エラーの発生元（例: アプリケーション名、サービス名）
+    /// 任意の補足情報（リクエストデータなど）
     /// </summary>
-    [StringLength(255)]
-    public string ErrorSource { get; set; }
+    public string AdditionalInfo { get; set; }
 
     /// <summary>
-    /// エラーが記録された日時
+    /// レコードの作成日時（記録時点）
     /// </summary>
     [Column(TypeName = "datetime")]
     public DateTime CreatedAt { get; set; }
-
-    /// <summary>
-    /// エラーに関する任意の追加情報
-    /// </summary>
-    public string AdditionalInfo { get; set; }
 }

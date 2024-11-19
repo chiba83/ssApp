@@ -29,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ssAppCommon\ssAppCommon.csproj" />
     <ProjectReference Include="..\ssAppModels\ssAppModels.csproj" />
     <ProjectReference Include="..\ssAppServices\ssAppServices.csproj" />
   </ItemGroup>
