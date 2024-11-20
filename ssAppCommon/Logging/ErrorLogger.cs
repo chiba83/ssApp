@@ -17,19 +17,40 @@ namespace ssAppCommon.Logging
         }
 
         // 例外メッセージから情報を抽出し、ログに記録
-        public async Task LogErrorAsync(Exception ex)
+        public async Task LogErrorAsync
+            (
+                Exception ex,
+                string additionalInfo = null,
+                string apiEndpoint = null,
+                string httpMethod = null,
+                string reqHeader = null,
+                string reqBody = null,
+                int? resStatusCode = null,
+                string resBody = null,
+                string userId = null,
+                string apiErrorType = null
+            )
         {
             if (ex == null) throw new ArgumentNullException(nameof(ex));
+            // サービス名とメソッド名を抽出
+            var (serviceName, methodName) = ExtractServiceAndMethod(ex);
 
-            // 例外メッセージから情報を抽出
-            var extractedData = ExtractData(ex.Message);
+            // エラーログを作成
             var errorLog = new ErrorLog
             {
-                ServiceName = extractedData["Namespace"],
-                MethodName = $"{extractedData["Class"]} : {extractedData["Method"]}",
+                ServiceName = serviceName,
+                MethodName = methodName,
                 ErrorMessage = ex.Message,
                 StackTrace = ex.StackTrace,
-                AdditionalInfo = extractedData["Info"],
+                AdditionalInfo = additionalInfo,
+                ApiEndpoint = apiEndpoint,
+                HttpMethod = httpMethod,
+                ReqHeader = reqHeader,
+                ReqBody = reqBody,
+                ResStatusCode = resStatusCode,
+                ResBody = resBody,
+                ApiErrorType = apiErrorType,
+                UserId = userId,
                 CreatedAt = DateTime.Now
             };
 
@@ -37,23 +58,28 @@ namespace ssAppCommon.Logging
             await _dbContext.SaveChangesAsync();
         }
 
-        // 例外メッセージから情報を抽出
-        private Dictionary<string, string> ExtractData(string message)
+        /// スタックトレースからサービス名とメソッド名を抽出
+        private (string ServiceName, string MethodName) ExtractServiceAndMethod(Exception ex)
         {
-            var patterns = new Dictionary<string, string>
-        {
-            { "Namespace", @"Namespace//(.*?)/" },
-            { "Class", @"Class//(.*?)/" },
-            { "Method", @"Method//(.*?)/" },
-            { "Info", @"Info//(.*?)/" }
-        };
+            if (ex == null || string.IsNullOrEmpty(ex.StackTrace))
+                return ("Unknown", "Unknown");
 
-            return patterns.Select(pattern => new
-            {
-                Key = pattern.Key,
-                Value = Regex.Match(message, pattern.Value).Success ?
-                        Regex.Match(message, pattern.Value).Groups[1].Value : "Unknown"
-            }).ToDictionary(x => x.Key, x => x.Value);
+            // スタックトレースの最初の行を解析
+            var stackTraceLines = ex.StackTrace.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            if (stackTraceLines.Length == 0) return ("Unknown", "Unknown");
+
+            // 正規表現で "Namespace.Class.Method (行番号付き)" を解析
+            var firstLine = stackTraceLines[0];
+            var regex = new Regex(@"^\s*at\s+(?<Namespace>[\w.]+)\.(?<Class>\w+)\.(?<Method>\w+)\(.*?\)\s+in\s+.*?:(line\s+(?<Line>\d+))?");
+            var match = regex.Match(firstLine);
+
+            if (!match.Success) return ("Unknown", "Unknown");
+
+            var serviceName = match.Groups["Namespace"].Value;
+            var methodName = match.Groups["Class"].Value + "." + match.Groups["Method"].Value;
+            methodName += match.Groups["Line"].Success ? $" (Line {match.Groups["Line"].Value})" : ""; // 行番号を追加
+
+            return (serviceName, methodName);
         }
     }
 }

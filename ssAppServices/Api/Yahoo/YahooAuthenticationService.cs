@@ -61,23 +61,21 @@ namespace ssAppServices.Api
         private async Task<string> AuthorizeAsync(ShopToken shopToken)
         {
             var parameters = new Dictionary<string, string>
-        {
-            { "grant_type", GrantType.authorization_code.ToString() },
-            { "code", shopToken.AuthCode.TrimEnd() },
-            { "redirect_uri", shopToken.CallbackUri }
-        };
-
+            {
+                { "grant_type", GrantType.authorization_code.ToString() },
+                { "code", shopToken.AuthCode.TrimEnd() },
+                { "redirect_uri", shopToken.CallbackUri }
+            };
             return await RequestAccessTokenAsync(parameters, shopToken, isRefresh: false);
         }
 
         private async Task<string> RefreshAccessTokenAsync(ShopToken shopToken)
         {
             var parameters = new Dictionary<string, string>
-        {
-            { "grant_type", GrantType.refresh_token.ToString() },
-            { "refresh_token", shopToken.RefreshToken }
-        };
-
+            {
+                { "grant_type", GrantType.refresh_token.ToString() },
+                { "refresh_token", shopToken.RefreshToken }
+            };
             return await RequestAccessTokenAsync(parameters, shopToken, isRefresh: true);
         }
 

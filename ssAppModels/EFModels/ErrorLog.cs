@@ -10,7 +10,6 @@ namespace ssAppModels.EFModels;
 
 [Table("ErrorLog")]
 [Index("CreatedAt", Name = "IX_ErrorLog_CreatedAt")]
-[Index("MethodName", Name = "IX_ErrorLog_MethodName")]
 [Index("ServiceName", Name = "IX_ErrorLog_ServiceName")]
 public partial class ErrorLog
 {
@@ -24,11 +23,13 @@ public partial class ErrorLog
     /// <summary>
     /// エラーが発生したサービス名やモジュール名
     /// </summary>
+    [StringLength(255)]
     public string ServiceName { get; set; }
 
     /// <summary>
     /// エラーが発生したメソッド名
     /// </summary>
+    [StringLength(255)]
     public string MethodName { get; set; }
 
     /// <summary>
@@ -49,7 +50,51 @@ public partial class ErrorLog
     public string AdditionalInfo { get; set; }
 
     /// <summary>
-    /// レコードの作成日時（記録時点）
+    /// 呼び出したAPIのエンドポイントURL
+    /// </summary>
+    public string ApiEndpoint { get; set; }
+
+    /// <summary>
+    /// HTTPメソッド（例: GET, POST, PUT, DELETE）
+    /// </summary>
+    [StringLength(20)]
+    public string HttpMethod { get; set; }
+
+    /// <summary>
+    /// API呼び出しHTTPリクエストヘッダーJSON
+    /// </summary>
+    public string ReqHeader { get; set; }
+
+    /// <summary>
+    /// API呼び出しリクエストボディJSON
+    /// </summary>
+    public string ReqBody { get; set; }
+
+    /// <summary>
+    /// APIから返されたHTTPステータスコード（例: 404, 500）
+    /// </summary>
+    public int? ResStatusCode { get; set; }
+
+    /// <summary>
+    /// APIから返されたレスポンスボディ（エラーメッセージなど）
+    /// </summary>
+    public string ResBody { get; set; }
+
+    /// <summary>
+    /// エラー種別（例: Timeout, Unauthorized, InvalidResponse）
+    /// </summary>
+    [StringLength(50)]
+    public string ApiErrorType { get; set; }
+
+    /// <summary>
+    /// エラー発生時のユーザーID（リクエストユーザー）
+    /// </summary>
+    [StringLength(255)]
+    [Unicode(false)]
+    public string UserId { get; set; }
+
+    /// <summary>
+    /// エラーが発生した日時
     /// </summary>
     [Column(TypeName = "datetime")]
     public DateTime CreatedAt { get; set; }

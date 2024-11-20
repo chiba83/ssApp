@@ -31,38 +31,59 @@ namespace ssAppServices
             );
         }
 
-        /// <summary>
-        /// HTTPリトライポリシー
-        /// </summary>
-        /// <param name="retryCount">リトライ回数（デフォルト3回）</param>
-        /// <param name="exit">リトライオーバー時に継続する場合はtrue（デフォルトはfalse）</param>
-        /// <returns>HTTPリトライポリシー</returns>
         public IAsyncPolicy<string> HttpRetryPolicy(int retryCount = 3, bool exit = false)
         {
-            return 
-            Policy<string>.Handle<Exception>().WaitAndRetryAsync // 全ての例外をキャッチ 
+            return
+            Policy<string>.Handle<Exception>().WaitAndRetryAsync
             (
-                retryCount: retryCount, // リトライ回数
-                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt - 1)), // 1秒 → 2秒 → 4秒
-                onRetry: async (exception, timespan, retryCount, context) =>
+                retryCount: retryCount,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt - 1)),
+                onRetry: async (outcome, timespan, currentRetryCount, context) =>
                 {
-                    await _errorLogger.LogErrorAsync(exception.Exception);
+                    await LogErrorForPolicy(
+                        ex: outcome.Exception,
+                        context: context,
+                        additionalInfo: $"Retry attempt {currentRetryCount} after {timespan.TotalSeconds} seconds.",
+                        apiErrorType: "Retry"
+                    );
                 }
-            ).WrapAsync 
+            ).WrapAsync
             (
-                Policy<string>.Handle<Exception>().FallbackAsync // 再試行限界超過時
+                Policy<string>.Handle<Exception>().FallbackAsync
                 (
                     fallbackAction: async (context, cancellationToken) =>
                     {
-                        if (exit) Environment.Exit(-1); // プログラム終了
-                        return await Task.FromResult("continue"); // 継続文字列を返す
+                        if (exit) Environment.Exit(-1);
+                        return await Task.FromResult("continue");
                     },
-                    onFallbackAsync: async (exception, context) =>
+                    onFallbackAsync: async (outcome, context) =>
                     {
-                        if (exception != null) // リトライオーバー時のエラーログ記録
-                            await _errorLogger.LogErrorAsync(exception.Exception);
+                        await LogErrorForPolicy(
+                            ex: outcome.Exception,
+                            context: context,
+                            additionalInfo: "Fallback executed after retry limit exceeded.",
+                            apiErrorType: "Fallback"
+                        );
                     }
                 )
+            );
+        }
+
+        private async Task LogErrorForPolicy(Exception ex, Context context, string additionalInfo, string apiErrorType)
+        {
+            if (ex == null) ex = new Exception("Unknown error");
+
+            var apiEndpoint = context.ContainsKey("ApiEndpoint") ? context["ApiEndpoint"].ToString() : null;
+            var httpMethod = context.ContainsKey("HttpMethod") ? context["HttpMethod"].ToString() : null;
+            var userId = context.ContainsKey("UserId") ? context["UserId"].ToString() : null;
+
+            await _errorLogger.LogErrorAsync(
+                ex: ex,
+                additionalInfo: additionalInfo,
+                apiEndpoint: apiEndpoint,
+                httpMethod: httpMethod,
+                userId: userId,
+                apiErrorType: apiErrorType
             );
         }
     }

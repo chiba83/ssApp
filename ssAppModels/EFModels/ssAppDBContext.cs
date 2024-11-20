@@ -61,15 +61,23 @@ public partial class ssAppDBContext : DbContext
 
         modelBuilder.Entity<ErrorLog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ErrorLog__3214EC27C6F6F83E");
+            entity.HasKey(e => e.Id).HasName("PK__ErrorLog__3214EC279E45D0C4");
 
             entity.Property(e => e.Id).HasComment("自動インクリメントのプライマリキー");
             entity.Property(e => e.AdditionalInfo).HasComment("任意の補足情報（リクエストデータなど）");
-            entity.Property(e => e.CreatedAt).HasComment("レコードの作成日時（記録時点）");
+            entity.Property(e => e.ApiEndpoint).HasComment("呼び出したAPIのエンドポイントURL");
+            entity.Property(e => e.ApiErrorType).HasComment("エラー種別（例: Timeout, Unauthorized, InvalidResponse）");
+            entity.Property(e => e.CreatedAt).HasComment("エラーが発生した日時");
             entity.Property(e => e.ErrorMessage).HasComment("エラーメッセージ");
+            entity.Property(e => e.HttpMethod).HasComment("HTTPメソッド（例: GET, POST, PUT, DELETE）");
             entity.Property(e => e.MethodName).HasComment("エラーが発生したメソッド名");
+            entity.Property(e => e.ReqBody).HasComment("API呼び出しリクエストボディJSON");
+            entity.Property(e => e.ReqHeader).HasComment("API呼び出しHTTPリクエストヘッダーJSON");
+            entity.Property(e => e.ResBody).HasComment("APIから返されたレスポンスボディ（エラーメッセージなど）");
+            entity.Property(e => e.ResStatusCode).HasComment("APIから返されたHTTPステータスコード（例: 404, 500）");
             entity.Property(e => e.ServiceName).HasComment("エラーが発生したサービス名やモジュール名");
             entity.Property(e => e.StackTrace).HasComment("エラーのスタックトレース");
+            entity.Property(e => e.UserId).HasComment("エラー発生時のユーザーID（リクエストユーザー）");
         });
 
         modelBuilder.Entity<OrderDetail>(entity =>

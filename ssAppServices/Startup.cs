@@ -30,7 +30,7 @@ namespace ssAppServices
             // ErrorLogger の登録
             services.AddSingleton<ErrorLogger>();
 
-            // ServiceErrHandler の登録
+            // ServiceErrHandler の登録 Pollyのポリシーを設定
             services.AddSingleton<ServiceErrHandler>();
 
             // MallSettings の登録
