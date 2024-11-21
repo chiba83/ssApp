@@ -24,8 +24,12 @@ namespace ssAppServices.Extensions
             // ロガーの登録
             services.AddSingleton<ErrorLogger>();
 
-            // エラーハンドラーの登録）
-            services.AddSingleton<ServiceErrHandler>();
+            // Defaultポリシーの登録
+            services.AddSingleton<IAsyncPolicy>(provider =>
+            {
+                var errHandler = provider.GetRequiredService<ServiceErrHandler>();
+                return errHandler.BuildDefaultPolicy();
+            });
 
             // HTTPリトライポリシーの登録
             services.AddSingleton<IAsyncPolicy<HttpResponseMessage>>(provider =>

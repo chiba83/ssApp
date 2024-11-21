@@ -20,15 +20,15 @@ namespace ssAppCommon.Logging
         public async Task LogErrorAsync
             (
                 Exception ex,
-                string additionalInfo = null,
-                string apiEndpoint = null,
-                string httpMethod = null,
-                string reqHeader = null,
-                string reqBody = null,
+                string? additionalInfo = null,
+                string? apiEndpoint = null,
+                string? httpMethod = null,
+                string? reqHeader = null,
+                string? reqBody = null,
                 int? resStatusCode = null,
-                string resBody = null,
-                string userId = null,
-                string apiErrorType = null
+                string? resBody = null,
+                string? userId = null,
+                string? apiErrorType = null
             )
         {
             if (ex == null) throw new ArgumentNullException(nameof(ex));

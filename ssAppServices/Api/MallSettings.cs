@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable CS8618
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -52,3 +54,5 @@ namespace ssAppServices.Api
         public string CreateCoupon { get; set; }
     }
 }
+
+#pragma warning restore CS8618

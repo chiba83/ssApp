@@ -2,6 +2,7 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 using Polly;
+using ssAppServices.Extensions;
 
 namespace ssAppServices.Api
 {
@@ -9,15 +10,17 @@ namespace ssAppServices.Api
     {
         private readonly IAsyncPolicy<HttpResponseMessage> _policy;
 
-        public ApiRequestHandler(IAsyncPolicy<HttpResponseMessage> policy)
+        public ApiRequestHandler(ServiceErrHandler errorHandler, int retryCount = 3, bool exitOnFallback = false)
         {
-            _policy = policy ?? throw new ArgumentNullException(nameof(policy));
+            if (errorHandler == null) throw new ArgumentNullException(nameof(errorHandler));
+            _policy = errorHandler.BuildHttpPolicy(retryCount, exitOnFallback);
         }
 
         /// <summary>
         /// HTTPリクエストをポリシー適用のもとで実行
         /// </summary>
         /// <param name="request">HttpRequestMessage</param>
+        /// <param name="context">Pollyコンテキスト</param>
         /// <returns>HttpResponseMessage</returns>
         public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, Polly.Context context)
         {

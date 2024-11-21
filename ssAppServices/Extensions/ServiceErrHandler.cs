@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable CS1998
+
+using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Polly;
@@ -13,6 +15,27 @@ namespace ssAppServices.Extensions
         public ServiceErrHandler(ErrorLogger errorLogger)
         {
             _errorLogger = errorLogger ?? throw new ArgumentNullException(nameof(errorLogger));
+        }
+
+        /// <summary>
+        /// すべての例外を処理するDefaultポリシーを作成
+        /// </summary>
+        /// <returns>構築済みのDefaultポリシー</returns>
+        public IAsyncPolicy BuildDefaultPolicy()
+        {
+            return Policy
+                .Handle<Exception>() // すべての例外をキャッチ
+                .FallbackAsync(
+                    fallbackAction: async (context, cancellationToken) =>
+                    {
+                        await Task.CompletedTask; // 何もしない
+                    },
+                    onFallbackAsync: async (exception, context) =>
+                    {
+                        exception = exception ?? new Exception("Unknown error");
+                        await _errorLogger.LogErrorAsync(exception, additionalInfo: "DefaultPolicy triggered.");
+                        context["LastException"] = exception; // 例外情報をコンテキストに保存
+                    });
         }
 
         /// <summary>
@@ -43,7 +66,7 @@ namespace ssAppServices.Extensions
                 .FallbackAsync(
                     fallbackAction: async (context, cancellationToken) =>
                     {
-                        if (exitOnFallback) Environment.Exit(-1);
+                         if (exitOnFallback) Environment.Exit(-1);
                         return new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable)
                         {
                             Content = new StringContent("{\"message\":\"Fallback executed\"}")

@@ -6,6 +6,7 @@ using System.Text;
 using ssAppModels;
 using ssAppModels.EFModels;
 using ssAppServices.Api;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ssAppServices.Api.Yahoo
 {
@@ -24,9 +25,8 @@ namespace ssAppServices.Api.Yahoo
         {
             _requestHandler = requestHandler ?? throw new ArgumentNullException(nameof(requestHandler));
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-            if (mallSettings?.Value?.Yahoo?.Endpoints?.AccessToken == null)
+            _tokenEndpoint = mallSettings.Value.Yahoo.Endpoints.AccessToken ??
                 throw new ArgumentNullException(nameof(mallSettings), "Yahooのアクセストークンエンドポイントが設定されていません。");
-            _tokenEndpoint = mallSettings.Value.Yahoo.Endpoints.AccessToken;
         }
 
         public async Task<string> GetValidAccessTokenAsync(YahooShop shopCode)
@@ -91,23 +91,24 @@ namespace ssAppServices.Api.Yahoo
                 Content = new FormUrlEncodedContent(parameters)
             };
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authHeader);
-            return request;
+
+            return request ?? throw new ArgumentNullException(nameof(request));
         }
 
         private async Task<string> ExecuteRequestAndHandleResponse(HttpRequestMessage request, ShopToken shopToken, bool isRefresh)
         {
-            var context = new Polly.Context
+            var pollyContext = new Polly.Context
             {
                 { "Vendor", "Yahoo" },
-                { "ApiEndpoint", request.RequestUri.ToString() },
+                { "ApiEndpoint", request.RequestUri?.ToString() },
                 { "HttpMethod", request.Method.ToString() },
                 { "UserId", shopToken.ClientId }
             };
 
-            var response = await _requestHandler.SendAsync(request, context);
+            var response = await _requestHandler.SendAsync(request, pollyContext);
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception($"トークン取得リクエストに失敗しました。HTTPステータスコード: {response.StatusCode}");
+                throw new Exception($"トークン取得リクエストに失敗しました。HTTPステータスコード: {response.StatusCode}。レスポンス内容: {await response.Content.ReadAsStringAsync()}");
 
             var tokenData = JObject.Parse(await response.Content.ReadAsStringAsync());
             string accessToken = tokenData["access_token"]?.ToString()
