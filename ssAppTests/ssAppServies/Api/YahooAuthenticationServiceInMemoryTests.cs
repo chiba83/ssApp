@@ -1,82 +1,58 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using ssAppModels.EFModels;
+using Microsoft.EntityFrameworkCore;
 using ssAppModels;
-using ssAppCommon.Logging;
-using ssAppServices.Api;
-using ssAppServices;
+using ssAppModels.EFModels;
+using ssAppServices.Api.Yahoo;
+using ssAppServices.Extensions;
 
 namespace ssApptests.ssAppServies.Api
 {
     [TestFixture]
     public class YahooAuthenticationServiceInMemoryTests
     {
-        private Microsoft.Extensions.Configuration.IConfiguration _configuration;
         private ServiceProvider _serviceProvider;
         private YahooAuthenticationService _yahooService;
         private ssAppDBContext _dbContext;
-        private YahooShop _shopCode = YahooShop.Yahoo_Yours;
+        private IConfiguration _configuration;
 
         [SetUp]
         public void Setup()
         {
             var services = new ServiceCollection();
+            // Test_ServiceCollectionExtensions を使用してテスト用依存関係を設定
+            services.AddTestDependencies();
 
-            // In-Memory Database の設定
-            services.AddDbContext<ssAppDBContext>(options =>
-                options.UseInMemoryDatabase("TestDatabase"));
-
-            // IConfiguration の登録
+            // IConfiguration の登録（本番DBの接続文字列取得用）
             _configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
-            services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(_configuration);
+            services.AddSingleton<IConfiguration>(_configuration);
 
-            // ApiClient の登録
-            services.AddHttpClient<ApiClientHandler>();
-
-            // ErrorLogger の登録
-            services.AddSingleton<ErrorLogger>();
-
-            // ServiceErrHandler の登録
-            services.AddSingleton<ServiceErrHandler>();
-
-            // MallSettings の登録
-            services.Configure<MallSettings>(_configuration.GetSection("MallSettings"));
-
-            // YahooAuthenticationService の登録
-            services.AddScoped<YahooAuthenticationService>();
-
+            // ServiceProvider の作成
             _serviceProvider = services.BuildServiceProvider();
-            _dbContext = _serviceProvider.GetRequiredService<ssAppDBContext>();
 
-            // 本番DBからデータを取得して In-Memory Database に反映
+            // テスト対象サービスの取得
+            _dbContext = _serviceProvider.GetRequiredService<ssAppDBContext>();
+            _yahooService = _serviceProvider.GetRequiredService<YahooAuthenticationService>();
+
+            // In-Memory Database に本番データを反映
+            SeedInMemoryDatabase();
+        }
+
+        // テストデータのセットアップ 本番DBデータをIn-Memoryにコピー
+        private void SeedInMemoryDatabase()
+        {
+            // 本番DB Context作成
             using (var productionDbContext = new ssAppDBContext(new DbContextOptionsBuilder<ssAppDBContext>()
                 .UseSqlServer(_configuration.GetConnectionString("ssAppDBContext"))
                 .Options))
             {
+                // 全データを一括で In-Memory Database に設定
                 var shopTokens = productionDbContext.ShopTokens.ToList();
-                foreach (var token in shopTokens)
-                {
-                    _dbContext.ShopTokens.Add(new ShopToken
-                    {
-                        ShopCode = token.ShopCode,
-                        AuthCode = token.AuthCode,
-                        ClientId = token.ClientId,
-                        Secret = token.Secret,
-                        AppType = token.AppType,
-                        CallbackUri = token.CallbackUri,
-                        AtexpiresAt = token.AtexpiresAt,
-                        RtexpiresAt = token.RtexpiresAt,
-                        AccessToken = token.AccessToken,
-                        RefreshToken = token.RefreshToken
-                    });
-                }
+                _dbContext.ShopTokens.AddRange(shopTokens);
                 _dbContext.SaveChanges();
             }
-
-            _yahooService = _serviceProvider.GetRequiredService<YahooAuthenticationService>();
         }
 
         [TearDown]
@@ -90,11 +66,11 @@ namespace ssApptests.ssAppServies.Api
         public async Task Scenario1_NewTokenRetrieval()
         {
             // モック設定
-            var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
+            var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
             shopToken.AtexpiresAt = DateTime.Now.AddYears(-1); // 1年前
             shopToken.RtexpiresAt = DateTime.Now.AddYears(-1); // 1年前
 
-            // 初期値をバックアップ
+            // 初期値を保持
             var initialAccessToken = shopToken.AccessToken;
             var initialRefreshToken = shopToken.RefreshToken;
 
@@ -102,10 +78,10 @@ namespace ssApptests.ssAppServies.Api
             await _dbContext.SaveChangesAsync();
 
             // テスト実行
-            string newAccessToken = await _yahooService.GetValidAccessTokenAsync(_shopCode);
+            string newAccessToken = await _yahooService.GetValidAccessTokenAsync(YahooShop.Yahoo_Yours);
 
             // データを再取得して検証
-            var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
+            var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
 
             // テスト項目検証
             Assert.That(newAccessToken, Is.Not.Null, "新規トークンが取得できません。");
@@ -120,11 +96,11 @@ namespace ssApptests.ssAppServies.Api
         public async Task Scenario2_TokenRefresh()
         {
             // モック設定
-            var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
+            var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
             shopToken.AtexpiresAt = DateTime.Now.AddHours(-3); // 3時間前
             shopToken.RtexpiresAt = DateTime.Now.AddMonths(1); // 1か月後
 
-            // 初期値をバックアップ
+            // 初期値を保持
             var initialAccessToken = shopToken.AccessToken;
             var initialRefreshToken = shopToken.RefreshToken;
 
@@ -132,10 +108,10 @@ namespace ssApptests.ssAppServies.Api
             await _dbContext.SaveChangesAsync();
 
             // テスト実行
-            string refreshedAccessToken = await _yahooService.GetValidAccessTokenAsync(_shopCode);
+            string refreshedAccessToken = await _yahooService.GetValidAccessTokenAsync(YahooShop.Yahoo_Yours);
 
             // データを再取得して検証
-            var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
+            var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
 
             // テスト項目検証
             Assert.That(refreshedAccessToken, Is.Not.Null, "更新トークンが取得できません。");
@@ -150,11 +126,11 @@ namespace ssApptests.ssAppServies.Api
         public async Task Scenario3_ExistingTokenUsage()
         {
             // モック設定
-            var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
+            var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
             shopToken.AtexpiresAt = DateTime.Now.AddMinutes(50); // 50分後
             shopToken.RtexpiresAt = DateTime.Now.AddMonths(1); // 1か月後
 
-            // 初期値をバックアップ
+            // 初期値を保持
             var initialAccessToken = shopToken.AccessToken;
             var initialRefreshToken = shopToken.RefreshToken;
 
@@ -162,10 +138,10 @@ namespace ssApptests.ssAppServies.Api
             await _dbContext.SaveChangesAsync();
 
             // テスト実行
-            string currentAccessToken = await _yahooService.GetValidAccessTokenAsync(_shopCode);
+            string currentAccessToken = await _yahooService.GetValidAccessTokenAsync(YahooShop.Yahoo_Yours);
 
             // データを再取得して検証
-            var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
+            var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
 
             // テスト項目検証
             Assert.That(currentAccessToken, Is.EqualTo(initialAccessToken), "トークンが変更されています。");

@@ -1,43 +1,25 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using ssAppModels.EFModels;
-using ssAppCommon.Logging;
-using ssAppServices;
-using ssAppServices.Api;
+using ssAppServices.Extensions;
 
 namespace ssAppServices
 {
     public class Startup
     {
-        private readonly IConfiguration _configuration;
+        public IConfiguration Configuration { get; }
 
-        public Startup(IConfiguration configuration)
+        public Startup()
         {
-            _configuration = configuration;
+            // appsettings.json を読み込む
+            Configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
         }
 
         public void ConfigureServices(IServiceCollection services)
         {
-            // DbContext の登録
-            services.AddDbContext<ssAppDBContext>(options =>
-                options.UseSqlServer(_configuration.GetConnectionString("ssAppDBContext")));
-
-            // ApiClient の登録
-            services.AddHttpClient<ApiClientHandler>();
-
-            // ErrorLogger の登録
-            services.AddSingleton<ErrorLogger>();
-
-            // ServiceErrHandler の登録 Pollyのポリシーを設定
-            services.AddSingleton<ServiceErrHandler>();
-
-            // MallSettings の登録
-            services.Configure<MallSettings>(_configuration.GetSection("MallSettings"));
-
-            // YahooAuthenticationService の登録
-            services.AddScoped<YahooAuthenticationService>();
+            // DI 設定を一元化（テストのDI登録簡略用）
+            services.AddProjectDependencies(Configuration);
         }
     }
 }

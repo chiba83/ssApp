@@ -1,20 +1,17 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using ssAppModels;
 using ssAppModels.EFModels;
-using ssAppServices.Api;
 using ssAppServices;
+using ssAppServices.Api.Yahoo;
+using ssAppServices.Extensions;
 
 namespace ssApptests.ssAppServies.Api
 {
     [TestFixture]
     public class YahooAuthenticationServiceTests
     {
-        private IConfiguration _configuration;
         private ServiceProvider _serviceProvider;
         private YahooAuthenticationService _yahooService;
         private ssAppDBContext _dbContext;
@@ -25,17 +22,14 @@ namespace ssApptests.ssAppServies.Api
         {
             var services = new ServiceCollection();
 
-            // IConfiguration の登録
-            _configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
-                .Build();
-            services.AddSingleton<IConfiguration>(_configuration);
-
-            //Startupのサービス登録を再利用
-            var startup = new Startup(_configuration);
+            // Startup クラスを使用して DI 設定を適用
+            var startup = new Startup();
             startup.ConfigureServices(services);
 
+            // ServiceProvider の作成
             _serviceProvider = services.BuildServiceProvider();
+
+            // テスト対象サービスと依存サービスの取得
             _dbContext = _serviceProvider.GetRequiredService<ssAppDBContext>();
             _yahooService = _serviceProvider.GetRequiredService<YahooAuthenticationService>();
         }
