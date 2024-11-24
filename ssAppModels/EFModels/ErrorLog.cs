@@ -41,7 +41,6 @@ public partial class ErrorLog
     /// <summary>
     /// エラーのスタックトレース
     /// </summary>
-    [Required]
     public string StackTrace { get; set; }
 
     /// <summary>
@@ -74,6 +73,8 @@ public partial class ErrorLog
     /// APIから返されたHTTPステータスコード（例: 404, 500）
     /// </summary>
     public int? ResStatusCode { get; set; }
+
+    public string ResHeader { get; set; }
 
     /// <summary>
     /// APIから返されたレスポンスボディ（エラーメッセージなど）

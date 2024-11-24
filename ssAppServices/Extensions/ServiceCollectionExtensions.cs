@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using Polly;
 using ssAppModels.EFModels;
 using ssAppCommon.Logging;
 using ssAppServices.Api;
@@ -22,21 +21,10 @@ namespace ssAppServices.Extensions
             services.Configure<MallSettings>(configuration.GetSection("MallSettings"));
 
             // ロガーの登録
-            services.AddSingleton<ErrorLogger>();
+            services.AddScoped<ErrorLogger>();
 
-            // Defaultポリシーの登録
-            services.AddSingleton<IAsyncPolicy>(provider =>
-            {
-                var errHandler = provider.GetRequiredService<ServiceErrHandler>();
-                return errHandler.BuildDefaultPolicy();
-            });
-
-            // HTTPリトライポリシーの登録
-            services.AddSingleton<IAsyncPolicy<HttpResponseMessage>>(provider =>
-            {
-                var errHandler = provider.GetRequiredService<ServiceErrHandler>();
-                return errHandler.BuildHttpPolicy();
-            });
+            // ServiceErrHandler の登録（ポリシー管理を一元化）
+            services.AddScoped<ServiceErrHandler>();
 
             // HTTPリクエスト用のハンドラー
             services.AddScoped<ApiRequestHandler>();

@@ -10,10 +10,12 @@ namespace ssAppServices.Api
     {
         private readonly IAsyncPolicy<HttpResponseMessage> _policy;
 
-        public ApiRequestHandler(ServiceErrHandler errorHandler, int retryCount = 3, bool exitOnFallback = false)
+        public ApiRequestHandler(ServiceErrHandler errorHandler)
         {
             if (errorHandler == null) throw new ArgumentNullException(nameof(errorHandler));
-            _policy = errorHandler.BuildHttpPolicy(retryCount, exitOnFallback);
+
+            // HTTP専用ポリシーを取得
+            _policy = errorHandler.GetHttpPolicy();
         }
 
         /// <summary>

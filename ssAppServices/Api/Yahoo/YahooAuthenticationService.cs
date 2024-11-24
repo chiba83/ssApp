@@ -1,12 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json.Linq;
-using System.Net.Http.Headers;
+﻿using System;
+using System.Collections.Generic;
+using System.Net.Http;
 using System.Text;
+using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Options;
 using ssAppModels;
 using ssAppModels.EFModels;
 using ssAppServices.Api;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ssAppServices.Api.Yahoo
 {
@@ -29,33 +29,25 @@ namespace ssAppServices.Api.Yahoo
                 throw new ArgumentNullException(nameof(mallSettings), "Yahooのアクセストークンエンドポイントが設定されていません。");
         }
 
-        public async Task<string> GetValidAccessTokenAsync(YahooShop shopCode)
+        public string GetValidAccessToken(YahooShop shopCode)
         {
-            var shopToken = await GetShopTokenAsync(shopCode);
+            var shopToken = ApiHelpers.GetShopToken(_dbContext, shopCode);
 
             if (shopToken.RtexpiresAt <= DateTime.Now.AddMinutes(BufferMinutes))
             {
                 if (string.IsNullOrEmpty(shopToken.AuthCode))
                     throw new Exception("リフレッシュトークンが期限切れで、許可コードが設定されていません。");
 
-                return await AuthorizeAsync(shopToken)
-                    ?? throw new Exception("リフレッシュトークンが期限切れで、新しいトークンの取得にも失敗しました。許可コードを再設定してください。");
+                return Authorize(shopToken) ?? throw new Exception("リフレッシュトークンが期限切れで、新しいトークンの取得にも失敗しました。許可コードを再設定してください。");
             }
 
             if (shopToken.AtexpiresAt <= DateTime.Now.AddMinutes(BufferMinutes))
-                return await RefreshAccessTokenAsync(shopToken);
+                return RefreshAccessToken(shopToken);
 
             return shopToken.AccessToken;
         }
 
-        private async Task<ShopToken> GetShopTokenAsync(YahooShop shopCode)
-        {
-            return await _dbContext.ShopTokens
-                .FirstOrDefaultAsync(st => st.ShopCode == shopCode.ToString())
-                ?? throw new Exception($"指定されたShopCode（{shopCode}）に対応するShopTokenが見つかりません。");
-        }
-
-        private async Task<string> AuthorizeAsync(ShopToken shopToken)
+        private string Authorize(ShopToken shopToken)
         {
             var parameters = new Dictionary<string, string>
             {
@@ -63,21 +55,19 @@ namespace ssAppServices.Api.Yahoo
                 { "code", shopToken.AuthCode.TrimEnd() },
                 { "redirect_uri", shopToken.CallbackUri }
             };
-
             var request = CreateTokenRequest(shopToken, parameters);
-            return await ExecuteRequestAndHandleResponse(request, shopToken, isRefresh: false);
+            return ExecuteRequestAndHandleResponse(request, shopToken, isRefresh: false);
         }
 
-        private async Task<string> RefreshAccessTokenAsync(ShopToken shopToken)
+        private string RefreshAccessToken(ShopToken shopToken)
         {
             var parameters = new Dictionary<string, string>
             {
                 { "grant_type", GrantType.refresh_token.ToString() },
                 { "refresh_token", shopToken.RefreshToken }
             };
-
             var request = CreateTokenRequest(shopToken, parameters);
-            return await ExecuteRequestAndHandleResponse(request, shopToken, isRefresh: true);
+            return ExecuteRequestAndHandleResponse(request, shopToken, isRefresh: true);
         }
 
         private HttpRequestMessage CreateTokenRequest(ShopToken shopToken, Dictionary<string, string> parameters)
@@ -90,40 +80,37 @@ namespace ssAppServices.Api.Yahoo
             {
                 Content = new FormUrlEncodedContent(parameters)
             };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authHeader);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeader);
 
-            return request ?? throw new ArgumentNullException(nameof(request));
+            return request;
         }
 
-        private async Task<string> ExecuteRequestAndHandleResponse(HttpRequestMessage request, ShopToken shopToken, bool isRefresh)
+        private string ExecuteRequestAndHandleResponse(HttpRequestMessage request, ShopToken shopToken, bool isRefresh)
         {
-            var pollyContext = new Polly.Context
-            {
-                { "Vendor", "Yahoo" },
-                { "ApiEndpoint", request.RequestUri?.ToString() },
-                { "HttpMethod", request.Method.ToString() },
-                { "UserId", shopToken.ClientId }
-            };
+            // pollyContext をメソッド内で生成
+            var pollyContext = ApiHelpers.CreatePollyContext("Yahoo", request, shopToken.ClientId);
 
-            var response = await _requestHandler.SendAsync(request, pollyContext);
+            // 非同期リクエスト部分（同期で待機）
+            var response = _requestHandler.SendAsync(request, pollyContext).Result;
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception($"トークン取得リクエストに失敗しました。HTTPステータスコード: {response.StatusCode}。レスポンス内容: {await response.Content.ReadAsStringAsync()}");
+                throw new Exception($"トークン取得リクエストに失敗しました。HTTPステータスコード: {response.StatusCode}。レスポンス内容: {response.Content.ReadAsStringAsync().Result}");
 
-            var tokenData = JObject.Parse(await response.Content.ReadAsStringAsync());
+            var tokenData = JObject.Parse(response.Content.ReadAsStringAsync().Result);
             string accessToken = tokenData["access_token"]?.ToString()
                 ?? throw new Exception("レスポンスにアクセストークンが含まれていません。");
             string? refreshToken = isRefresh ? null : tokenData["refresh_token"]?.ToString();
 
             if (!isRefresh && string.IsNullOrEmpty(refreshToken))
                 throw new Exception("レスポンスにリフレッシュトークンが含まれていません。");
+
             int expiresIn = tokenData["expires_in"]?.ToObject<int>() ?? 3600;
 
-            await UpdateTokensInDatabase(shopToken, accessToken, refreshToken, expiresIn, isRefresh);
+            UpdateTokensInDatabase(shopToken, accessToken, refreshToken, expiresIn, isRefresh);
             return accessToken;
         }
 
-        private async Task UpdateTokensInDatabase(ShopToken shopToken, string accessToken, string? refreshToken, int expiresInSeconds, bool isRefresh)
+        private void UpdateTokensInDatabase(ShopToken shopToken, string accessToken, string? refreshToken, int expiresInSeconds, bool isRefresh)
         {
             shopToken.AccessToken = accessToken;
             shopToken.AtexpiresAt = DateTime.Now.AddSeconds(expiresInSeconds);
@@ -136,7 +123,7 @@ namespace ssAppServices.Api.Yahoo
             }
 
             _dbContext.ShopTokens.Update(shopToken);
-            await _dbContext.SaveChangesAsync();
+            _dbContext.SaveChanges();
         }
     }
 }

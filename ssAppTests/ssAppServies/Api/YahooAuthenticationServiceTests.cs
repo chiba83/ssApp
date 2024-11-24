@@ -44,7 +44,7 @@ namespace ssApptests.ssAppServies.Api
         }
 
         [Test]
-        public async Task Scenario1_NewTokenRetrieval()
+        public void Scenario1_NewTokenRetrieval()
         {
             // モック設定
             var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
@@ -56,10 +56,10 @@ namespace ssApptests.ssAppServies.Api
             var initialRefreshToken = shopToken.RefreshToken;
 
             _dbContext.Update(shopToken);
-            await _dbContext.SaveChangesAsync();
+            _dbContext.SaveChanges();
 
             // テスト実行
-            string newAccessToken = await _yahooService.GetValidAccessTokenAsync(_shopCode);
+            string newAccessToken = _yahooService.GetValidAccessToken(_shopCode); // 同期化
 
             // データを再取得して検証
             var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
@@ -73,7 +73,7 @@ namespace ssApptests.ssAppServies.Api
         }
 
         [Test]
-        public async Task Scenario2_TokenRefresh()
+        public void Scenario2_TokenRefresh()
         {
             // モック設定
             var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
@@ -85,10 +85,10 @@ namespace ssApptests.ssAppServies.Api
             var initialRefreshToken = shopToken.RefreshToken;
 
             _dbContext.Update(shopToken);
-            await _dbContext.SaveChangesAsync();
+            _dbContext.SaveChanges();
 
             // テスト実行
-            string refreshedAccessToken = await _yahooService.GetValidAccessTokenAsync(_shopCode);
+            string refreshedAccessToken = _yahooService.GetValidAccessToken(_shopCode); // 同期化
 
             // データを再取得して検証
             var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
@@ -102,7 +102,7 @@ namespace ssApptests.ssAppServies.Api
         }
 
         [Test]
-        public async Task Scenario3_ExistingTokenUsage()
+        public void Scenario3_ExistingTokenUsage()
         {
             // モック設定
             var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());
@@ -114,10 +114,10 @@ namespace ssApptests.ssAppServies.Api
             var initialRefreshToken = shopToken.RefreshToken;
 
             _dbContext.Update(shopToken);
-            await _dbContext.SaveChangesAsync();
+            _dbContext.SaveChanges();
 
             // テスト実行
-            string currentAccessToken = await _yahooService.GetValidAccessTokenAsync(_shopCode);
+            string currentAccessToken = _yahooService.GetValidAccessToken(_shopCode); // 同期化
 
             // データを再取得して検証
             var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == _shopCode.ToString());

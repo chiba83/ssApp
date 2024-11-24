@@ -2,7 +2,6 @@
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using ssAppModels.EFModels;
 
 namespace ssAppCommon.Logging
@@ -16,7 +15,7 @@ namespace ssAppCommon.Logging
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         }
 
-        // 例外メッセージから情報を抽出し、ログに記録
+        // 非同期版ログ記録メソッド
         public async Task LogErrorAsync
             (
                 Exception ex,
@@ -26,12 +25,14 @@ namespace ssAppCommon.Logging
                 string? reqHeader = null,
                 string? reqBody = null,
                 int? resStatusCode = null,
+                string? resHeader = null,
                 string? resBody = null,
                 string? userId = null,
                 string? apiErrorType = null
             )
         {
             if (ex == null) throw new ArgumentNullException(nameof(ex));
+
             // サービス名とメソッド名を抽出
             var (serviceName, methodName) = ExtractServiceAndMethod(ex);
 
@@ -48,6 +49,7 @@ namespace ssAppCommon.Logging
                 ReqHeader = reqHeader,
                 ReqBody = reqBody,
                 ResStatusCode = resStatusCode,
+                ResHeader = resHeader,
                 ResBody = resBody,
                 ApiErrorType = apiErrorType,
                 UserId = userId,
@@ -58,7 +60,16 @@ namespace ssAppCommon.Logging
             await _dbContext.SaveChangesAsync();
         }
 
+        // 同期版ログ記録メソッド（非同期メソッドを同期的に実行）
+        public void LogErrorSync(Exception ex, string? additionalInfo = null)
+        {
+            if (ex == null) throw new ArgumentNullException(nameof(ex));
+            LogErrorAsync(ex, additionalInfo).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
         /// スタックトレースからサービス名とメソッド名を抽出
+        /// </summary>
         private (string ServiceName, string MethodName) ExtractServiceAndMethod(Exception ex)
         {
             if (ex == null || string.IsNullOrEmpty(ex.StackTrace))

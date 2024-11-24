@@ -38,6 +38,10 @@ namespace ssApptests.ssAppServies.Api
             _dbContext = _serviceProvider.GetRequiredService<ssAppDBContext>();
             _yahooService = _serviceProvider.GetRequiredService<YahooAuthenticationService>();
 
+            // In-Memory Database をリセットしてデータをシード
+            _dbContext.Database.EnsureDeleted(); // データベースの削除
+            _dbContext.Database.EnsureCreated(); // データベースの再作成
+
             // In-Memory Database に本番データを反映
             SeedInMemoryDatabase();
         }
@@ -65,7 +69,7 @@ namespace ssApptests.ssAppServies.Api
         }
 
         [Test]
-        public async Task Scenario1_NewTokenRetrieval()
+        public void Scenario1_NewTokenRetrieval()
         {
             // モック設定
             var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
@@ -77,10 +81,10 @@ namespace ssApptests.ssAppServies.Api
             var initialRefreshToken = shopToken.RefreshToken;
 
             _dbContext.Update(shopToken);
-            await _dbContext.SaveChangesAsync();
+            _dbContext.SaveChanges();
 
             // テスト実行
-            string newAccessToken = await _yahooService.GetValidAccessTokenAsync(YahooShop.Yahoo_Yours);
+            string newAccessToken = _yahooService.GetValidAccessToken(YahooShop.Yahoo_Yours); // 非同期 → 同期化
 
             // データを再取得して検証
             var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
@@ -95,7 +99,7 @@ namespace ssApptests.ssAppServies.Api
         }
 
         [Test]
-        public async Task Scenario2_TokenRefresh()
+        public void Scenario2_TokenRefresh()
         {
             // モック設定
             var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
@@ -107,10 +111,10 @@ namespace ssApptests.ssAppServies.Api
             var initialRefreshToken = shopToken.RefreshToken;
 
             _dbContext.Update(shopToken);
-            await _dbContext.SaveChangesAsync();
+            _dbContext.SaveChanges();
 
             // テスト実行
-            string refreshedAccessToken = await _yahooService.GetValidAccessTokenAsync(YahooShop.Yahoo_Yours);
+            string refreshedAccessToken = _yahooService.GetValidAccessToken(YahooShop.Yahoo_Yours); // 非同期 → 同期化
 
             // データを再取得して検証
             var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
@@ -125,7 +129,7 @@ namespace ssApptests.ssAppServies.Api
         }
 
         [Test]
-        public async Task Scenario3_ExistingTokenUsage()
+        public void Scenario3_ExistingTokenUsage()
         {
             // モック設定
             var shopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");
@@ -137,10 +141,10 @@ namespace ssApptests.ssAppServies.Api
             var initialRefreshToken = shopToken.RefreshToken;
 
             _dbContext.Update(shopToken);
-            await _dbContext.SaveChangesAsync();
+            _dbContext.SaveChanges();
 
             // テスト実行
-            string currentAccessToken = await _yahooService.GetValidAccessTokenAsync(YahooShop.Yahoo_Yours);
+            string currentAccessToken = _yahooService.GetValidAccessToken(YahooShop.Yahoo_Yours); // 非同期 → 同期化
 
             // データを再取得して検証
             var updatedShopToken = _dbContext.ShopTokens.First(st => st.ShopCode == "Yahoo_Yours");

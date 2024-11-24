@@ -27,11 +27,20 @@ namespace ssAppServices.Extensions
             services.Configure<MallSettings>(configuration.GetSection("MallSettings"));
 
             // ロガーの登録
-            services.AddSingleton<ErrorLogger>();
+            services.AddScoped<ErrorLogger>();
 
-            // テスト用のモックHTTPリトライポリシーの登録
-            var noOpPolicy = Policy.NoOpAsync<HttpResponseMessage>();
-            services.AddSingleton<IAsyncPolicy<HttpResponseMessage>>(noOpPolicy);
+            // テスト用の ServiceErrHandler の登録
+            services.AddScoped<ServiceErrHandler>();
+
+            // Defaultポリシーの登録
+            services.AddSingleton<IAsyncPolicy>(provider =>
+                provider.GetRequiredService<ServiceErrHandler>()
+                    .BuildDefaultPolicy()); // BuildDefaultPolicy を直接呼び出し
+
+            // HTTPリトライポリシーの登録
+            services.AddSingleton<IAsyncPolicy<HttpResponseMessage>>(provider =>
+                provider.GetRequiredService<ServiceErrHandler>()
+                    .BuildHttpPolicy()); // BuildHttpPolicy を直接呼び出し
 
             // HTTPリクエスト用のハンドラー
             services.AddScoped<ApiRequestHandler>();
