@@ -3,15 +3,15 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
-using ssAppModels;
+using ssAppModels.ApiModels;
 using ssAppModels.EFModels;
 using ssAppServices;
 using ssAppServices.Api.Yahoo;
 using ssAppServices.Extensions;
 
-namespace ssApptests.ssAppServies.Api
+namespace ssApptests.ssAppServices.Api
 {
-    [TestFixture]
+   [TestFixture]
     public class YahooAuthenticationServiceTests
     {
         private ServiceProvider _serviceProvider;

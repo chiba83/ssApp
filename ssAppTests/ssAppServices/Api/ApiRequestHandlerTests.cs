@@ -4,35 +4,37 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Text;
 using System.Web;
-using ssAppModels;
 using ssAppModels.EFModels;
 using ssAppServices;
 using ssAppServices.Api;
+using ssAppModels.ApiModels;
 
-namespace ssApptests.ssAppServies.Api
+namespace ssApptests.ssAppServices.Api
 {
-    [TestFixture]
-    public class ApiRequestHandlerTests
-    {
-        private ServiceProvider _serviceProvider;
-        private ApiRequestHandler _apiRequestHandler;
-        private ssAppDBContext _dbContext;
-        private IOptions<MallSettings> _mallSettings;
+   [TestFixture]
+   public class ApiRequestHandlerTests
+   {
+      private ServiceProvider _serviceProvider;
+      private ApiRequestHandler _apiRequestHandler;
+      private ssAppDBContext _dbContext;
+      private IOptions<MallSettings> _mallSettings;
 
-        [SetUp]
-        public void Setup()
-        {
-            var services = new ServiceCollection();
+      [SetUp]
+      public void Setup()
+      {
+         var services = new ServiceCollection();
 
-            // appsettings.json を読み込み、StartupのConfigureServicesを流用
-            var startup = new Startup();
-            startup.ConfigureServices(services);
+         // appsettings.json を読み込み、StartupのConfigureServicesを流用
+         var startup = new Startup();
+         startup.ConfigureServices(services);
 
-            _serviceProvider = services.BuildServiceProvider();
-            _dbContext = _serviceProvider.GetRequiredService<ssAppDBContext>();
-            _mallSettings = _serviceProvider.GetRequiredService<IOptions<MallSettings>>();
-            _apiRequestHandler = _serviceProvider.GetRequiredService<ApiRequestHandler>();
-        }
+         _serviceProvider = services.BuildServiceProvider();
+
+         // テスト対象サービスと依存サービスの取得
+         _dbContext = _serviceProvider.GetRequiredService<ssAppDBContext>();
+         _mallSettings = _serviceProvider.GetRequiredService<IOptions<MallSettings>>();
+         _apiRequestHandler = _serviceProvider.GetRequiredService<ApiRequestHandler>();
+      }
 
         [TearDown]
         public void TearDown()

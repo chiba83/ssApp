@@ -27,6 +27,14 @@ public partial class ShopToken
     public string ShopCode { get; set; }
 
     /// <summary>
+    /// 店舗ID（店舗URL）
+    /// </summary>
+    [Column("SellerID")]
+    [StringLength(15)]
+    [Unicode(false)]
+    public string SellerId { get; set; }
+
+    /// <summary>
     /// ヤフー専用（client , server）
     /// </summary>
     [StringLength(6)]

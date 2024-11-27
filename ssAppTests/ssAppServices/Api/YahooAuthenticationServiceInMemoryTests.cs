@@ -3,14 +3,14 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using ssAppModels;
 using ssAppModels.EFModels;
 using ssAppServices.Api.Yahoo;
 using ssAppServices.Extensions;
+using ssAppModels.ApiModels;
 
-namespace ssApptests.ssAppServies.Api
+namespace ssApptests.ssAppServices.Api
 {
-    [TestFixture]
+   [TestFixture]
     public class YahooAuthenticationServiceInMemoryTests
     {
         private ServiceProvider _serviceProvider;

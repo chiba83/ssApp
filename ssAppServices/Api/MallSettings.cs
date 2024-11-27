@@ -28,9 +28,10 @@ namespace ssAppServices.Api
     public class OrderEndpoints
     {
         public string OrderList { get; set; }
-    }
+      public string orderInfo { get; set; }
+   }
 
-    public class RakutenSettings
+   public class RakutenSettings
     {
         public RakutenApiEndpoints ApiEndpoints { get; set; }
     }

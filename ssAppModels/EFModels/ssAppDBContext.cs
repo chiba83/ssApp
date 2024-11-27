@@ -280,9 +280,7 @@ public partial class ssAppDBContext : DbContext
                 .IsFixedLength()
                 .HasComment("ヤフー専用（client , server）");
             entity.Property(e => e.AtexpiresAt).HasComment("ヤフー専用（アクセストークン有効期限）");
-            entity.Property(e => e.AuthCode)
-                .IsFixedLength()
-                .HasComment("ヤフー専用（許可コード）");
+            entity.Property(e => e.AuthCode).HasComment("ヤフー専用（許可コード）");
             entity.Property(e => e.CallbackUri).HasComment("コールバックURL");
             entity.Property(e => e.ClientId).HasComment("ヤフー：クライアントID、楽天：LicenseKey");
             entity.Property(e => e.PkexpiresAt).HasComment("ヤフー専用（公開キー有効期限）");
@@ -290,6 +288,7 @@ public partial class ssAppDBContext : DbContext
             entity.Property(e => e.RefreshToken).HasComment("ヤフー専用（リフレッシュトークン）");
             entity.Property(e => e.RtexpiresAt).HasComment("ヤフー専用（リフレッシュトークン有効期限）");
             entity.Property(e => e.Secret).HasComment("ヤフー：シークレット、楽天：サービスシークレット");
+            entity.Property(e => e.SellerId).HasComment("店舗ID（店舗URL）");
             entity.Property(e => e.ShopCode).HasComment("Shopマスタの一意コード");
             entity.Property(e => e.TokenType)
                 .IsFixedLength()

@@ -4,13 +4,13 @@ using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Options;
-using ssAppModels;
 using ssAppModels.EFModels;
 using ssAppServices.Api;
+using ssAppModels.ApiModels;
 
 namespace ssAppServices.Api.Yahoo
 {
-    public class YahooAuthenticationService
+   public class YahooAuthenticationService
     {
         private readonly ApiRequestHandler _requestHandler;
         private readonly ssAppDBContext _dbContext;
