@@ -1,12 +1,8 @@
 ﻿using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Serialization;
+using System.Xml.Linq;
 using Microsoft.Extensions.Options;
 using ssAppModels.EFModels;
 using ssAppModels.ApiModels;
-using ssAppCommon.Extensions;
-using System.Xml.Linq;
 
 namespace ssAppServices.Api.Yahoo
 {
@@ -23,26 +19,37 @@ namespace ssAppServices.Api.Yahoo
           ssAppDBContext dbContext,
           IOptions<MallSettings> mallSettings)
       {
-         _authService = authService
-             ?? throw new ArgumentNullException(nameof(authService));
-         _requestHandler = requestHandler
-             ?? throw new ArgumentNullException(nameof(requestHandler));
-         _dbContext = dbContext
-             ?? throw new ArgumentNullException(nameof(dbContext));
+         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+         _requestHandler = requestHandler ?? throw new ArgumentNullException(nameof(requestHandler));
+         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
          _apiEndpoint = mallSettings.Value.Yahoo.Endpoints.Order.OrderList
              ?? throw new ArgumentNullException(nameof(mallSettings), "Yahooの注文APIエンドポイントが設定されていません。");
       }
 
       /// <summary>
-      /// Yahoo注文検索APIを呼び出す
+      /// Yahoo注文検索APIを呼び出し、必要なデータのみ返す（本番用）
       /// </summary>
-      public HttpResponseMessage GetOrderSearch(
-//      public (HttpResponseMessage, List<Dictionary<string, object>>) GetOrderSearch(
-          YahooOrderListCondition searchCondition,
-          List<string> outputFields,
-          YahooShop shopCode,
-          int? resultLimit = null,
-          int? startIndex = null)
+      public List<Dictionary<string, object?>> GetOrderSearch(
+         YahooOrderListCondition searchCondition,
+         List<string> outputFields,
+         YahooShop shopCode,
+         int? resultLimit = null,
+         int? startIndex = null)
+      {
+         // HTTPレスポンスを無視し、パース結果のみ返す
+         var (_, parsedData) = GetOrderSearchWithResponse(searchCondition, outputFields, shopCode, resultLimit, startIndex);
+         return parsedData;
+      }
+
+      /// <summary>
+      /// Yahoo注文検索APIを呼び出し、HTTPレスポンスも返す（テスト用）
+      /// </summary>
+      public (HttpResponseMessage httpResponse, List<Dictionary<string, object?>> parsedData) GetOrderSearchWithResponse(
+         YahooOrderListCondition searchCondition,
+         List<string> outputFields,
+         YahooShop shopCode,
+         int? resultLimit = null,
+         int? startIndex = null)
       {
          // アクセストークンの取得
          var accessToken = _authService.GetValidAccessToken(shopCode);
@@ -80,7 +87,50 @@ namespace ssAppServices.Api.Yahoo
          var pollyContext = ApiHelpers.CreatePollyContext("Yahoo", requestMessage, shopToken.SellerId);
 
          // HTTPリクエストを送信
-         return _requestHandler.SendAsync(requestMessage, pollyContext).Result;
+         var response = _requestHandler.SendAsync(requestMessage, pollyContext).Result;
+
+         // レスポンス処理
+         if (!response.IsSuccessStatusCode)
+            throw new Exception($"Yahoo APIリクエストが失敗しました: {response.ReasonPhrase}");
+
+         // レスポンスボディを取得
+         var responseBody = response.Content.ReadAsStringAsync().Result;
+
+         // レスポンスXMLをパース
+         var parsedData = ParseResponseXml(responseBody, outputFields);
+         return (response, parsedData);
+      }
+
+      /// <summary>
+      /// レスポンスXMLをパースして動的コレクションを生成
+      /// </summary>
+      private List<Dictionary<string, object?>> ParseResponseXml(string responseXml, List<string> outputFields)
+      {
+         // OrderInfo の要素を取得
+         var xDocument = XDocument.Parse(responseXml);
+         var orderElements = xDocument.Descendants("OrderInfo");
+
+         // フィールドの型情報を準備
+         var validFields = outputFields
+             .Where(field => OrderInfo.FieldDefinitions.ContainsKey(field)) // 定義済みのフィールドのみ処理
+             .ToList();
+
+         // OrderInfo を辞書のリストに変換
+         var results = orderElements
+             .Select(orderElement => validFields
+                 .ToDictionary(
+                     field => field,
+                     field =>
+                     {
+                        var elementValue = orderElement.Element(field)?.Value;
+                        return elementValue != null
+                             ? Convert.ChangeType(elementValue, OrderInfo.FieldDefinitions[field]) // 型変換
+                             : null; // 値がない場合は null
+                     }
+                 )
+             ).ToList();
+
+         return results;
       }
    }
 }

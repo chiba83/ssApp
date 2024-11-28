@@ -25,7 +25,7 @@ namespace ssAppModels.ApiModels
    }
 
    /// <summary>
-   /// Yahoo注文検索の検索条件を管理するクラス
+   /// Yahoo注文検索リクエスの検索条件を管理するクラス
    /// </summary>
    public class YahooOrderListCriteria
    {
@@ -43,7 +43,7 @@ namespace ssAppModels.ApiModels
    }
 
    /// <summary>
-   /// Yahoo注文検索の条件項目を定義するクラス
+   /// Yahoo注文検索リクエスの条件項目を定義するクラス
    /// </summary>
    public class YahooOrderListCondition
    {
@@ -150,7 +150,7 @@ namespace ssAppModels.ApiModels
    }
 
    /// <summary>
-   /// Yahoo注文検索のレスポンス情報を管理するクラス
+   /// Yahoo注文検索レスポンス情報を管理するクラス
    /// </summary> 
    public class Result
    {
@@ -159,7 +159,7 @@ namespace ssAppModels.ApiModels
    }
 
    /// <summary>
-   /// Yahoo注文検索の検索結果情報を管理するクラス
+   /// Yahoo注文検索レスポンス結果情報を管理するクラス
    /// </summary>
    public class Search
    {
@@ -168,7 +168,7 @@ namespace ssAppModels.ApiModels
    }
 
    /// <summary>
-   /// Yahoo注文検索の注文情報フィールドを管理するクラス
+   /// Yahoo注文検索レスポンスの動的な選択フィールドと型を管理するクラス
    /// </summary>
    public class OrderInfo
    {

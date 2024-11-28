@@ -16,7 +16,6 @@ namespace ssAppServices.Extensions
          var connectionString = configuration.GetConnectionString("ssAppDBContext");
          services.AddDbContext<ssAppDBContext>(options =>
              options.UseSqlServer(connectionString));
-
          // MallSettings の登録
          services.Configure<MallSettings>(configuration.GetSection("MallSettings"));
          // ロガーの登録
