@@ -17,17 +17,13 @@ namespace ssAppCommon.Extensions
       public static void AgainstNull<T>(T value, string parameterName) where T : class
       {
          if (value is null)
-         {
             throw new ArgumentNullException(parameterName, $"{parameterName} がNullです。");
-         }
       }
 
       public static void AgainstNullOrEmpty<T>(IEnumerable<T> collection, string parameterName)
       {
          if (collection is null || !collection.Any())
-         {
             throw new ArgumentException($"{parameterName}  がNullです。", parameterName);
-         }
       }
    }
 }

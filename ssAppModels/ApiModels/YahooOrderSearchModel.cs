@@ -4,17 +4,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
+/**************************************************************/
+/*        YahooOrderListリクエスト・レスポンスのモデル           */
+/**************************************************************/
+// リクエスト仕様
+// https://developer.yahoo.co.jp/webapi/shopping/orderList.html
+// リクエスト仕様：検索条件（Condition）
+// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#condition
+// リクエスト仕様：取得情報選択（Field）
+// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#field
+
+
 namespace ssAppModels.ApiModels
 {
+   /**************************************************************/
+   /*             YahooOrderListリクエストのモデルCLASS           */
+   /*************************************************************/
+
    public class YahooOrderListRequest
    {
       [JsonProperty("Req")]
       public YahooOrderListRequestBody? Req { get; set; }
    }
 
-   /// <summary>
-   /// Yahoo注文検索リクエストボディ
-   /// </summary>
    public class YahooOrderListRequestBody
    {
       [JsonProperty("Search")]
@@ -24,9 +36,6 @@ namespace ssAppModels.ApiModels
       public string SellerId { get; set; } // セラーID（必須項目）
    }
 
-   /// <summary>
-   /// Yahoo注文検索リクエスの検索条件を管理するクラス
-   /// </summary>
    public class YahooOrderListCriteria
    {
       [JsonProperty("Result")]
@@ -44,12 +53,11 @@ namespace ssAppModels.ApiModels
 
    /// <summary>
    /// Yahoo注文検索リクエスの条件項目を定義するクラス
+   /// リクエスト仕様：検索条件（Condition）
+   /// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#condition
    /// </summary>
    public class YahooOrderListCondition
    {
-      //[JsonProperty("Seller_Id")] // 注文ID
-      //public string Seller_Id { get; set; }
-
       [JsonProperty("OrderId")] // 注文ID
       public string? OrderId { get; set; }
 
@@ -65,11 +73,11 @@ namespace ssAppModels.ApiModels
       [JsonProperty("DeviceType")] // デバイス情報
       public string? DeviceType { get; set; }
 
-      //[JsonProperty("IsActive")] // 注文有効フラグ
-      //public bool? IsActive { get; set; }
+      [JsonProperty("IsActive")] // 注文有効フラグ
+      public bool? IsActive { get; set; }
 
-      //[JsonProperty("IsSeen")] // 閲覧済みフラグ
-      //public bool? IsSeen { get; set; }
+      [JsonProperty("IsSeen")] // 閲覧済みフラグ
+      public bool? IsSeen { get; set; }
 
       [JsonProperty("OrderTimeFrom")] // 注文日時（開始）
       public string? OrderTimeFrom
@@ -149,33 +157,32 @@ namespace ssAppModels.ApiModels
       }
    }
 
-   /// <summary>
-   /// Yahoo注文検索レスポンス情報を管理するクラス
-   /// </summary> 
+   /**************************************************************/
+   /*            YahooOrderListレスポンスのモデルCLASS            */
+   /*************************************************************/
+   
    public class Result
    {
       public string Status { get; set; } // ステータス (例: OK)
       public Search Search { get; set; } // 検索結果情報
    }
 
-   /// <summary>
-   /// Yahoo注文検索レスポンス結果情報を管理するクラス
-   /// </summary>
    public class Search
    {
       public int TotalCount { get; set; } // 該当件数
-      public List<OrderInfo> OrderInfo { get; set; } = new(); // 注文情報リスト
+      public List<YahooOrderListOrderInfo> OrderInfo { get; set; } = new(); // 注文情報リスト
    }
 
+   /******************************************************************/
+   /* YahooOrderListレスポンスの動的な選択フィールドと型を管理するクラス */
+   /*****************************************************************/
+
    /// <summary>
-   /// Yahoo注文検索レスポンスの動的な選択フィールドと型を管理するクラス
+   /// 取得情報の選択仕様（Field）
+   /// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#field
    /// </summary>
-   public class OrderInfo
+   public class YahooOrderListOrderInfo
    {
-      /// <summary>
-      /// 動的フィールド格納用辞書
-      /// キーがフィールド名、値がその値
-      /// </summary>
       public Dictionary<string, object> Fields { get; set; } = new();
 
       /// <summary>
@@ -309,139 +316,5 @@ namespace ssAppModels.ApiModels
          { "TotalImmediateBonusRatio", typeof(decimal) }, // 特典の一部利用合計割合")
          { "SocialGiftType", typeof(int) } // ソーシャルギフトタイプ")
       };
-   }
-
-   /// <summary>
-   /// 出力選択の候補となるフィールドリストを定義するクラス
-   /// </summary>
-   public static class YahooOrderListFields
-   {
-      public static readonly Dictionary<string, string> FieldDescriptions = new Dictionary<string, string>
-         {
-            { "OrderId", "注文ID" },
-            { "Version", "バージョン" },
-            { "OriginalOrderId", "受注時注文ID" },
-            { "ParentOrderId", "分割元注文ID" },
-            { "DeviceType", "デバイス情報" },
-            { "IsActive", "注文有効フラグ" },
-            { "IsSeen", "閲覧済みフラグ" },
-            { "IsSplit", "分割フラグ" },
-            { "IsRoyalty", "課金フラグ" },
-            { "IsSeller", "管理者注文フラグ" },
-            { "IsAffiliate", "アフィリエイトフラグ" },
-            { "IsRatingB2s", "評価フラグ（Buyer⇒Seller）" },
-            { "OrderTime", "注文日時" },
-            { "ExistMultiReleaseDate", "複数発売日あり" },
-            { "ReleaseDate", "注文（最長）発売日" },
-            { "LastUpdateTime", "最終更新日時" },
-            { "Suspect", "悪戯フラグ" },
-            { "OrderStatus", "注文ステータス" },
-            { "StoreStatus", "ストアステータス" },
-            { "RoyaltyFixTime", "課金確定日時" },
-            { "PrintSlipFlag", "注文伝票出力有無" },
-            { "PrintDeliveryFlag", "納品書出力有無" },
-            { "PrintBillFlag", "請求書出力有無" },
-            { "BuyerCommentsFlag", "バイヤーコメント有無" },
-            { "PayStatus", "入金ステータス" },
-            { "SettleStatus", "決済ステータス" },
-            { "PayType", "支払い分類" },
-            { "PayMethod", "支払い方法" },
-            { "PayMethodName", "支払い方法名称" },
-            { "PayDate", "入金日" },
-            { "SettleId", "決済ID" },
-            { "UseWallet", "ウォレット利用有無" },
-            { "NeedBillSlip", "請求書有無" },
-            { "NeedDetailedSlip", "明細書有無" },
-            { "NeedReceipt", "領収書有無" },
-            { "BillFirstName", "ご請求先名前" },
-            { "BillFirstNameKana", "ご請求先名前カナ" },
-            { "BillLastName", "ご請求先名字" },
-            { "BillLastNameKana", "ご請求先名字カナ" },
-            { "BillPrefecture", "ご請求先都道府県" },
-            { "ShipStatus", "出荷ステータス" },
-            { "ShipMethod", "配送方法" },
-            { "ShipMethodName", "配送方法名" },
-            { "ShipRequestDate", "配送希望日" },
-            { "ShipRequestTime", "配送希望時間" },
-            { "ShipNotes", "配送メモ" },
-            { "ShipCompanyCode", "配送会社" },
-            { "ReceiveShopCode", "受取店舗コード" },
-            { "ShipInvoiceNumber1", "配送伝票番号１" },
-            { "ShipInvoiceNumber2", "配送伝票番号2" },
-            { "ShipInvoiceNumberEmptyReason", "伝票番号なし理由" },
-            { "ShipUrl", "配送会社URL" },
-            { "ArriveType", "きょうつく、あすつく" },
-            { "ShipDate", "出荷日" },
-            { "NeedGiftWrap", "ギフト包装有無" },
-            { "NeedGiftWrapMessage", "ギフトメッセージ有無" },
-            { "NeedGiftWrapPaper", "のし有無" },
-            { "ShipFirstName", "お届け先名前" },
-            { "ShipFirstNameKana", "お届け先名前カナ" },
-            { "ShipLastName", "お届け先名字" },
-            { "ShipLastNameKana", "お届け先名字カナ" },
-            { "ShipPrefecture", "お届け先都道府県" },
-            { "PayCharge", "手数料" },
-            { "ShipCharge", "送料" },
-            { "GiftWrapCharge", "ギフト包装料" },
-            { "Discount", "値引き" },
-            { "GiftCardDiscount", "商品券利用額" },
-            { "UsePoint", "利用ポイント合計" },
-            { "TotalPrice", "合計金額" },
-            { "RefundTotalPrice", "返金合計金額" },
-            { "UsePointFixDate", "利用ポイント確定日" },
-            { "IsUsePointFix", "利用ポイント確定有無" },
-            { "IsGetPointFixAll", "全付与ポイント確定有無" },
-            { "SellerId", "セラーID" },
-            { "IsLogin", "Yahoo! JAPAN IDログイン有無" },
-            { "PayNo", "支払番号" },
-            { "PayNoIssueDate", "支払番号発行日時" },
-            { "SellerType", "セラー種別" },
-            { "IsPayManagement", "代金支払い管理注文" },
-            { "ArrivalDate", "着荷日" },
-            { "TotalMallCouponDiscount", "モールクーポン値引き額" },
-            { "IsReadOnly", "読み取り専用" },
-            { "IsApplePay", "ApplePay利用有無" },
-            { "IsFirstClassDrugIncludes", "第1類医薬品フラグ" },
-            { "IsFirstClassDrugAgreement", "第1類医薬品承諾フラグ" },
-            { "IsWelcomeGiftIncludes", "無料プレゼント(ウェルカムギフト)含有フラグ" },
-            { "ReceiveSatelliteType", "自宅外配送受取種別" },
-            { "ShipInstructType", "出荷指示区分" },
-            { "ShipInstructStatus", "※ヤマトピック&デリバリー、フルフィルメント専用項目出荷指示ステータス" },
-            { "YamatoCoopStatus", "※ヤマトピック&デリバリー、フルフィルメント専用項目ヤマト連携ステータス" },
-            { "ReceiveShopType", "店頭注文種別" },
-            { "ReceiveShopName", "配送元店頭名" },
-            { "ExcellentDelivery", "優良配送フラグ" },
-            { "IsEazy", "EAZY注文フラグ" },
-            { "EazyDeliveryCode", "EAZYコード" },
-            { "EazyDeliveryName", "EAZY受け取り場所名" },
-            { "FraudHoldStatus", "不正保留ステータス" },
-            { "PublicationTime", "orderList公開日時" },
-            { "IsYahooAuctionOrder", "Yahoo!オークション併売フラグ" },
-            { "YahooAuctionMerchantId", "Yahoo!オークション管理番号" },
-            { "YahooAuctionId", "オークションID" },
-            { "IsYahooAuctionDeferred", "Yahoo!オークション購入後決済フラグ" },
-            { "YahooAuctionCategoryType", "Yahoo!オークションカテゴリ種別" },
-            { "YahooAuctionBidType", "Yahoo!オークション落札種別" },
-            { "YahooAuctionBundleType", "Yahoo!オークション同梱タイプ" },
-            { "ItemYahooAucId", "オークションID" },
-            { "ItemYahooAucMerchantId", "Yahoo!オークション管理番号" },
-            { "PayMethodChangeDeadline", "支払い方法変更期限" },
-            { "IsPayMethodChangePossible", "支払い方法変更可能フラグ" },
-            { "YourTimesaleDiscount", "あなただけのタイムセール値引価格" },
-            { "GoodStoreStatus", "優良店判定" },
-            { "CurrentGoodStoreBenefitApply", "注文時点の優良店特典適応状態" },
-            { "CurrentPromoPkgApply", "注文時点のプラン適応状況" },
-            { "IsSubscription", "定期購入フラグ" },
-            { "SubscriptionId", "定期購入親ID" },
-            { "SubscriptionContinueCount", "定期購入継続回数" },
-            { "LineGiftOrderId", "LINE注文ID※LINE専用項目" },
-            { "IsLineGiftOrder", "LINE注文※LINE専用項目" },
-            { "IsLineGiftShippable", "LINE出荷可能フラグ※LINE専用項目" },
-            { "ShippingDeadline", "LINE発送期限※LINE専用項目" },
-            { "LineGiftCharge", "LINE手数料※LINE専用項目" },
-            { "TotalImmediateBonusAmount", "特典の一部利用合計額" },
-            { "TotalImmediateBonusRatio", "特典の一部利用合計割合" },
-            { "SocialGiftType", "ソーシャルギフトタイプ" }
-         };
    }
 }

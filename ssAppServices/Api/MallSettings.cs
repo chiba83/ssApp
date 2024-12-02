@@ -27,8 +27,8 @@ namespace ssAppServices.Api
 
     public class OrderEndpoints
     {
-        public string OrderList { get; set; }
-      public string orderInfo { get; set; }
+      public string OrderList { get; set; }
+      public string OrderInfo { get; set; }
    }
 
    public class RakutenSettings
@@ -55,5 +55,3 @@ namespace ssAppServices.Api
         public string CreateCoupon { get; set; }
     }
 }
-
-#pragma warning restore CS8618

@@ -22,6 +22,14 @@ namespace ssAppServices.Api
              ?? throw new Exception($"指定されたShopCode（{shopCode.ToString()}）に対応するShopTokenが見つかりません。");
       }
 
+      public static void AreAllFieldsValid(List<string> outputFields, Dictionary<string, Type> allFields)
+      {
+         // 無効なフィールドを特定
+         var invalidFields = outputFields.Where(field => !allFields.ContainsKey(field)).ToList();
+         if (invalidFields.Any())
+            throw new ArgumentException($"次の選択フィールドは存在しません: {string.Join(", ", invalidFields)}");
+      }
+
       /// <summary>
       /// 公開キーをHTTPリクエスト仕様に暗号化
       /// </summary>

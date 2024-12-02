@@ -4,6 +4,26 @@ using Microsoft.Extensions.Options;
 using ssAppModels.EFModels;
 using ssAppModels.ApiModels;
 
+/**************************************************************/
+/*                        YahooOrderList                      */
+/**************************************************************/
+// YahooOrderList は、Yahooの注文検索APIを呼び出すためのクラスです。
+// 検索条件に応じた注文ヘッダー情報を返します。（注文明細は返しません）
+// 注文明細を取得する前段階で使用するAPIです。主に注文ID一覧を取得するために使用します。
+// 
+// リクエスト仕様
+// https://developer.yahoo.co.jp/webapi/shopping/orderList.html
+// リクエスト仕様：検索条件（Condition）
+// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#condition
+// リクエスト仕様：取得情報選択（Field）
+// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#field
+// リクエスト仕様：配送会社コード／サンプルリクエスト
+// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#shipcompanycode
+// レスポンス仕様／サンプルレスポンス
+// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#response
+// 公開鍵認証の仕様（サンプルコードあり）
+// https://developer.yahoo.co.jp/webapi/shopping/help/#aboutapipublickey/#aboutapipublickey
+
 namespace ssAppServices.Api.Yahoo
 {
    public class YahooOrderList
@@ -112,7 +132,7 @@ namespace ssAppServices.Api.Yahoo
 
          // フィールドの型情報を準備
          var validFields = outputFields
-             .Where(field => OrderInfo.FieldDefinitions.ContainsKey(field)) // 定義済みのフィールドのみ処理
+             .Where(field => YahooOrderListOrderInfo.FieldDefinitions.ContainsKey(field)) // 定義済みのフィールドのみ処理
              .ToList();
 
          // OrderInfo を辞書のリストに変換
@@ -124,7 +144,7 @@ namespace ssAppServices.Api.Yahoo
                      {
                         var elementValue = orderElement.Element(field)?.Value;
                         return elementValue != null
-                             ? Convert.ChangeType(elementValue, OrderInfo.FieldDefinitions[field]) // 型変換
+                             ? Convert.ChangeType(elementValue, YahooOrderListOrderInfo.FieldDefinitions[field]) // 型変換
                              : null; // 値がない場合は null
                      }
                  )
