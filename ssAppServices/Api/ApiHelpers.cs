@@ -33,20 +33,24 @@ namespace ssAppServices.Api
       /// <summary>
       /// 公開キーをHTTPリクエスト仕様に暗号化
       /// </summary>
-      public static string? GetPublicKey(ShopToken shopToken)
+      public static (string? key, string? version) GetPublicKey(ShopToken shopToken)
       {
          Guard.AgainstNull(shopToken, nameof(shopToken));
          // 公開鍵が未設定の場合はnullを返却
-         if (shopToken.PublicKey == null) return null; 
+         if (shopToken.PublicKey == null) return (null, null); 
          // 有効期限が10分以内の場合はnullを返却
          if (shopToken.PkexpiresAt < DateTime.UtcNow.AddMinutes(10) 
-            || shopToken.PkexpiresAt == null) return null;
+            || shopToken.PkexpiresAt == null) return (null, null);
+         // 公開鍵versionが未設定の場合はnullを返却
+         if (shopToken.PublicKeyVersion == null) return (null, null);
 
-         // 整形処理
+         // 公開キーの整形
          var formattedKey = shopToken.PublicKey
              .Replace("-----BEGIN PUBLIC KEY-----", "")
              .Replace("-----END PUBLIC KEY-----", "")
-             .Replace("\n", "").Replace("\r", "").Trim();
+             .Replace("\n", "")
+             .Replace("\r", "") // Windowsの改行にも対応
+             .Trim();
 
          // 認証情報の生成
          string authenticationValue = $"{shopToken.SellerId}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
@@ -56,7 +60,8 @@ namespace ssAppServices.Api
          rsa.ImportSubjectPublicKeyInfo(Convert.FromBase64String(formattedKey), out _);
          var encryptedAuthenticationValue = rsa.Encrypt(Encoding.UTF8.GetBytes(authenticationValue), RSAEncryptionPadding.Pkcs1);
 
-         return Convert.ToBase64String(encryptedAuthenticationValue);
+         return (Convert.ToBase64String(encryptedAuthenticationValue)
+            , shopToken.PublicKeyVersion.ToString());
       }
 
       /// <summary>
@@ -84,7 +89,7 @@ namespace ssAppServices.Api
       /// <summary>
       /// HTTPリクエストヘッダーを設定
       /// </summary>
-      public static HttpRequestMessage SetRequestHeaders(HttpRequestMessage requestMessage,string accessToken, string? encodedPublicKey)
+      public static HttpRequestMessage SetRequestHeaders(HttpRequestMessage requestMessage,string accessToken, string? encodedPublicKey, string? KeyVersion)
       {
          Guard.AgainstNull(requestMessage, nameof(requestMessage));
          Guard.AgainstNullOrWhiteSpace(accessToken, nameof(accessToken));
@@ -96,7 +101,7 @@ namespace ssAppServices.Api
 
          //公開キー使用のリクエストヘッダーを追加設定
          requestMessage.Headers.Add("X-sws-signature", encodedPublicKey); // 暗号化された認証情報を追加
-         requestMessage.Headers.Add("X-sws-signature-version", "1"); // バージョンを固定
+         requestMessage.Headers.Add("X-sws-signature-version", KeyVersion); // Keyバージョン
          return requestMessage;
       }
 

@@ -79,6 +79,11 @@ public partial class ShopToken
     public string PublicKey { get; set; }
 
     /// <summary>
+    /// ヤフー専用（公開キーバージョン）
+    /// </summary>
+    public int? PublicKeyVersion { get; set; }
+
+    /// <summary>
     /// ヤフー専用（公開キー有効期限）
     /// </summary>
     [Column("PKExpiresAt", TypeName = "datetime")]

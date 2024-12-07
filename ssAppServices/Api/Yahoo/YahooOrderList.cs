@@ -120,8 +120,8 @@ namespace ssAppServices.Api.Yahoo
          // アクセストークンの取得
          var accessToken = _authService.GetValidAccessToken(shopCode);
          // リクエストヘッダの設定
-         var encodedPublicKey = ApiHelpers.GetPublicKey(shopToken); // 公開鍵取得
-         return ApiHelpers.SetRequestHeaders(requestMessage, accessToken, encodedPublicKey);
+         var (encodedPublicKey, KeyVersion) = ApiHelpers.GetPublicKey(shopToken); // 公開鍵取得
+         return ApiHelpers.SetRequestHeaders(requestMessage, accessToken, encodedPublicKey, KeyVersion);
       }
 
       // レスポンスXMLをパースして動的コレクションを生成

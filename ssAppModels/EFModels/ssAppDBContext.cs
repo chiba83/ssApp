@@ -285,6 +285,7 @@ public partial class ssAppDBContext : DbContext
             entity.Property(e => e.ClientId).HasComment("ヤフー：クライアントID、楽天：LicenseKey");
             entity.Property(e => e.PkexpiresAt).HasComment("ヤフー専用（公開キー有効期限）");
             entity.Property(e => e.PublicKey).HasComment("ヤフー専用（公開キー）");
+            entity.Property(e => e.PublicKeyVersion).HasComment("ヤフー専用（公開キーバージョン）");
             entity.Property(e => e.RefreshToken).HasComment("ヤフー専用（リフレッシュトークン）");
             entity.Property(e => e.RtexpiresAt).HasComment("ヤフー専用（リフレッシュトークン有効期限）");
             entity.Property(e => e.Secret).HasComment("ヤフー：シークレット、楽天：サービスシークレット");

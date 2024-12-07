@@ -16,7 +16,7 @@ using System.Xml.Linq;
 namespace ssApptests.ssAppServices.Api
 {
    [TestFixture]
-   public class YahooOrderListTests
+   public class YahooOrderTests
    {
       private ServiceProvider _serviceProvider;
       private ssAppDBContext _dbContext;
@@ -47,7 +47,7 @@ namespace ssApptests.ssAppServices.Api
       }
 
       [Test]
-      public void GetOrderSearchAsync_ValidRequest_ReturnsSuccess()
+      public void T01_GetOrderSearch_Success()
       {
          // Arrange: 検索条件の作成
          var searchCondition = new YahooOrderListCondition
@@ -91,7 +91,7 @@ namespace ssApptests.ssAppServices.Api
       }
 
       [Test]
-      public void GetOrderInfo_ReturnsSuccess()
+      public void T02_GetOrderInfo_Success()
       {
          // Arrange: 検索条件の作成
          var searchCondition = new YahooOrderListCondition
