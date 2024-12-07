@@ -1,5 +1,4 @@
 ﻿#pragma warning disable CS8618
-using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -23,31 +22,20 @@ namespace ssAppModels.ApiModels
 
    public class YahooOrderListRequest
    {
-      [JsonProperty("Req")]
       public YahooOrderListRequestBody? Req { get; set; }
    }
 
    public class YahooOrderListRequestBody
    {
-      [JsonProperty("Search")]
       public YahooOrderListCriteria? Search { get; set; }
-
-      [JsonProperty("SellerId")]
       public string SellerId { get; set; } // セラーID（必須項目）
    }
 
    public class YahooOrderListCriteria
    {
-      [JsonProperty("Result")]
       public int Result { get; set; } // 最大取得件数 /Search/Result
-
-      [JsonProperty("Start")]
       public int Start { get; set; } // 検索開始位置 /Search/Start
-
-      [JsonProperty("Condition")]
       public YahooOrderListCondition? Condition { get; set; } // 検索条件 /Search/Condition
-
-      [JsonProperty("Field")]
       public string? Field { get; set; } // 出力フィールド /Search/Fields
    }
 
@@ -58,119 +46,53 @@ namespace ssAppModels.ApiModels
    /// </summary>
    public class YahooOrderListCondition
    {
-      [JsonProperty("OrderId")] // 注文ID
-      public string? OrderId { get; set; }
-
-      [JsonProperty("Version")] // バージョン
-      public string? Version { get; set; }
-
-      [JsonProperty("OriginalOrderId")] // 受注時注文ID
-      public string? OriginalOrderId { get; set; }
-
-      [JsonProperty("ParentOrderId")] // 分割元注文ID
-      public string? ParentOrderId { get; set; }
-
-      [JsonProperty("DeviceType")] // デバイス情報
-      public string? DeviceType { get; set; }
-
-      [JsonProperty("IsActive")] // 注文有効フラグ
-      public bool? IsActive { get; set; }
-
-      [JsonProperty("IsSeen")] // 閲覧済みフラグ
-      public bool? IsSeen { get; set; }
-
-      [JsonProperty("OrderTimeFrom")] // 注文日時（開始）
-      public string? OrderTimeFrom
-      {
-         get => _orderTimeFrom;
-         set
-         {
-            if (!IsValidDateFormat(value))
-               throw new ArgumentException("OrderTimeFrom must follow the format 'YYYYMMDDHH24MISS'.");
-            _orderTimeFrom = value;
-         }
-      }
-      private string? _orderTimeFrom;
-
-      [JsonProperty("OrderTimeTo")] // 注文日時（終了）
-      public string? OrderTimeTo
-      {
-         get => _orderTimeTo;
-         set
-         {
-            if (!IsValidDateFormat(value))
-               throw new ArgumentException("OrderTimeTo must follow the format 'YYYYMMDDHH24MISS'.");
-            _orderTimeTo = value;
-         }
-      }
-      private string? _orderTimeTo;
-
-      [JsonProperty("OrderStatus")] // 注文ステータス
-      public string? OrderStatus { get; set; }
-
-      [JsonProperty("PayMethod")] // 支払い方法
-      public string? PayMethod { get; set; }
-
-      [JsonProperty("PayStatus")] // 支払いステータス
-      public string? PayStatus { get; set; }
-
-      [JsonProperty("BillFirstNameKana")] // ご請求先名前カナ
-      public string? BillFirstNameKana { get; set; }
-
-      [JsonProperty("BillLastNameKana")] // ご請求先名字カナ
-      public string? BillLastNameKana { get; set; }
-
-      [JsonProperty("ShipFirstNameKana")] // お届け先名前カナ
-      public string? ShipFirstNameKana { get; set; }
-
-      [JsonProperty("ShipLastNameKana")] // お届け先名字カナ
-      public string? ShipLastNameKana { get; set; }
-
-      [JsonProperty("ShipStatus")] // 出荷ステータス
-      public string? ShipStatus { get; set; }
-
-      [JsonProperty("ShipCompanyCode")] // 配送会社コード
-      public string? ShipCompanyCode { get; set; }
-
-      [JsonProperty("ShipInvoiceNumber1")] // 配送伝票番号１
-      public string? ShipInvoiceNumber1 { get; set; }
-
-      [JsonProperty("ShipInvoiceNumber2")] // 配送伝票番号2
-      public string? ShipInvoiceNumber2 { get; set; }
-
-      [JsonProperty("ShipDateFrom")] // 出荷日（開始）
-      public string? ShipDateFrom { get; set; }
-
-      [JsonProperty("ShipDateTo")] // 出荷日（終了）
-      public string? ShipDateTo { get; set; }
-
-      [JsonProperty("ItemId")] // 商品ID
-      public string? ItemId { get; set; }
-
-      [JsonProperty("SubCode")] // サブコード
-      public string? SubCode { get; set; }
-
-      private bool IsValidDateFormat(string? value)
-      {
-         if (string.IsNullOrEmpty(value)) return false;
-         return Regex.IsMatch(value, @"^\d{14}$");
-      }
+      public string? OrderId { get; set; } // 注文ID
+      public string? Version { get; set; } // バージョン
+      public string? OriginalOrderId { get; set; } // 受注時注文ID
+      public string? ParentOrderId { get; set; } // 分割元注文ID
+      public string? DeviceType { get; set; } // デバイス情報
+      public bool? IsActive { get; set; } // 注文有効フラグ
+      public bool? IsSeen { get; set; } // 閲覧済みフラグ
+      public string? OrderTimeFrom { get; set; } // 注文日時（開始）
+      public string? OrderTimeTo { get; set; } // 注文日時（終了）
+      public string? OrderStatus { get; set; } // 注文ステータス
+      public string? PayMethod { get; set; } // 支払い方法
+      public string? PayStatus { get; set; } // 支払いステータス
+      public string? BillFirstNameKana { get; set; } // ご請求先名前カナ
+      public string? BillLastNameKana { get; set; } // ご請求先名字カナ
+      public string? ShipFirstNameKana { get; set; } // お届け先名前カナ
+      public string? ShipLastNameKana { get; set; } // お届け先名字カナ
+      public string? ShipStatus { get; set; } // 出荷ステータス
+      public string? ShipCompanyCode { get; set; } // 配送会社コード
+      public string? ShipInvoiceNumber1 { get; set; } // 配送伝票番号１
+      public string? ShipInvoiceNumber2 { get; set; } // 配送伝票番号2
+      public string? ShipDateFrom { get; set; } // 出荷日（開始）
+      public string? ShipDateTo { get; set; } // 出荷日（終了）
+      public string? ItemId { get; set; } // 商品ID
+      public string? SubCode { get; set; } // サブコード
    }
 
    /**************************************************************/
    /*            YahooOrderListレスポンスのモデルCLASS            */
    /*************************************************************/
-   
-   public class Result
+
+   public class YahooOrderListResult
    {
       public string Status { get; set; } // ステータス (例: OK)
-      public Search Search { get; set; } // 検索結果情報
+      public YahooOrderListSearch Search { get; set; } // 検索結果情報
    }
 
-   public class Search
+   public class YahooOrderListSearch
    {
       public int TotalCount { get; set; } // 該当件数
       public List<YahooOrderListOrderInfo> OrderInfo { get; set; } = new(); // 注文情報リスト
+   }
+
+   public class YahooOrderListOrderInfo
+   {
+      public int Index { get; set; }
+      public Dictionary<string, object> Fields { get; set; } = new();
+      public Dictionary<string, object>? Items { get; set; } = new();
    }
 
    /******************************************************************/
@@ -181,14 +103,10 @@ namespace ssAppModels.ApiModels
    /// 取得情報の選択仕様（Field）
    /// https://developer.yahoo.co.jp/webapi/shopping/orderList.html/#field
    /// </summary>
-   public class YahooOrderListOrderInfo
+   public static class YahooOrderListFieldDefinitions
    {
-      public Dictionary<string, object> Fields { get; set; } = new();
-
-      /// <summary>
-      /// 型情報付きフィールド辞書
-      /// キーがフィールド名、値がフィールドの型
-      /// </summary>
+      // 型情報付きフィールド辞書
+      // キーがフィールド名、値がフィールドの型
       public static readonly Dictionary<string, Type> FieldDefinitions = new()
       {
          { "OrderId", typeof(string) }, // 注文ID

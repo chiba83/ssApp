@@ -472,6 +472,14 @@ namespace ssAppModels.ApiModels
          return $"Unknown : {fieldType.Name}";
       }
 
+      // グループ一覧を取得する
+      public static List<string> GetGroups()
+      {
+         return new List<string> 
+         {
+            nameof(Item), nameof(Detail), nameof(Order), nameof(Ship),
+            nameof(Pay), nameof(Buyer), nameof(Seller)
+         };
+      }
    }
-
 }

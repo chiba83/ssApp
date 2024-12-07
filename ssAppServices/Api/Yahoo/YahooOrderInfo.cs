@@ -129,8 +129,9 @@ namespace ssAppServices.Api.Yahoo
                FirstResultPosition = int.Parse(resultSetElement.Attribute("firstResultPosition")?.Value ?? "0"),
                Result = new YahooOrderInfoResult
                {
-                  Status = resultSetElement.Element("Result")?.Element("Status")?.Value,
-                  OrderInfo = ParseOrderInfo(resultSetElement.Element("Result")?.Element("OrderInfo"))
+                  Status = resultSetElement.Element("Result")?.Element("Status")?.Value ?? "Unknown",
+                  OrderInfo = ParseOrderInfo(resultSetElement.Element("Result")?.Element("OrderInfo")
+                     ?? throw new InvalidOperationException("OrderInfo ノードがレスポンスXMLに存在しません。"))
                }
             }
          };
@@ -139,9 +140,6 @@ namespace ssAppServices.Api.Yahoo
 
       private YahooOrderInfoDynamic ParseOrderInfo(XElement orderInfoElement)
       {
-         if (orderInfoElement == null)
-            return null;
-
          var orderInfo = new YahooOrderInfoDynamic();
 
          // Orderグループの動的フィールド
@@ -183,22 +181,19 @@ namespace ssAppServices.Api.Yahoo
          var itemElements = orderInfoElement.Elements("Item");
          foreach (var itemElement in itemElements)
          {
-            orderInfo.Items.Add(ParseItem(itemElement));
+            orderInfo.Items?.Add(ParseItem(itemElement));
          }
          return orderInfo;
       }
 
       private Dictionary<string, object> ParseDynamicNode(XElement node, Dictionary<string, Type> fieldDefinitions)
       {
-         var fields = new Dictionary<string, object>();
-
-         foreach (var field in node.Elements())
-         {
-            var fieldName = field.Name.LocalName;
-            if (fieldDefinitions.TryGetValue(fieldName, out var fieldType))
-               fields[fieldName] = Convert.ChangeType(field.Value, fieldType);
-         }
-         return fields;
+         return node.Elements()
+            .Where(field => fieldDefinitions.ContainsKey(field.Name.LocalName))
+            .ToDictionary(
+               field => field.Name.LocalName,
+               field => Convert.ChangeType(field.Value, fieldDefinitions[field.Name.LocalName])
+            );
       }
 
       private YahooOrderInfoItem ParseItem(XElement itemElement)

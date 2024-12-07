@@ -3,6 +3,8 @@ using System.Xml.Linq;
 using Microsoft.Extensions.Options;
 using ssAppModels.EFModels;
 using ssAppModels.ApiModels;
+using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 
 /**************************************************************/
 /*                        YahooOrderList                      */
@@ -49,7 +51,7 @@ namespace ssAppServices.Api.Yahoo
       /// <summary>
       /// Yahoo注文検索APIを呼び出し、必要なデータのみ返す（本番用）
       /// </summary>
-      public List<Dictionary<string, object?>> GetOrderSearch(
+      public YahooOrderListResult GetOrderSearch(
          YahooOrderListCondition searchCondition,
          List<string> outputFields,
          YahooShop shopCode,
@@ -64,19 +66,38 @@ namespace ssAppServices.Api.Yahoo
       /// <summary>
       /// Yahoo注文検索APIを呼び出し、HTTPレスポンスも返す（テスト用）
       /// </summary>
-      public (HttpResponseMessage httpResponse, List<Dictionary<string, object?>> parsedData) GetOrderSearchWithResponse(
+      public (HttpResponseMessage httpResponse, YahooOrderListResult parsedData) GetOrderSearchWithResponse(
          YahooOrderListCondition searchCondition,
          List<string> outputFields,
          YahooShop shopCode,
          int? resultLimit = null,
          int? startIndex = null)
       {
-         // アクセストークンの取得
-         var accessToken = _authService.GetValidAccessToken(shopCode);
-
+         // Validation Check
+         ApiHelpers.AreAllFieldsValid(outputFields, YahooOrderListFieldDefinitions.FieldDefinitions);
          // ShopToken 情報の取得
          var shopToken = ApiHelpers.GetShopToken(_dbContext, shopCode);
+         // リクエストオブジェクトの作成
+         var requestMessage = SetHttpRequest(resultLimit, startIndex, outputFields, searchCondition, shopToken, shopCode);
+         // PollyContext を生成
+         var pollyContext = ApiHelpers.CreatePollyContext("Yahoo", requestMessage, shopToken.SellerId);
+         // HTTPリクエストを送信
+         var response = _requestHandler.SendAsync(requestMessage, pollyContext).Result;
 
+         // レスポンス処理
+         if (!response.IsSuccessStatusCode)
+            throw new Exception($"Yahoo APIリクエストが失敗しました: {response.ReasonPhrase}");
+
+         // レスポンスボディを取得
+         var responseBody = response.Content.ReadAsStringAsync().Result;
+         // レスポンスXMLをパース
+         var parsedData = ParseResponseXml(responseBody, outputFields);
+         return (response, parsedData);
+      }
+
+      // HTTPリクエストの作成
+      private HttpRequestMessage SetHttpRequest(int? resultLimit, int? startIndex, List<string> outputFields, YahooOrderListCondition searchCondition, ShopToken shopToken, YahooShop shopCode)
+      {
          // リクエストオブジェクトの作成
          var requestBody = new YahooOrderListRequestBody
          {
@@ -89,68 +110,69 @@ namespace ssAppServices.Api.Yahoo
             },
             SellerId = shopToken.SellerId
          };
-
          // XMLリクエストボディの作成
          var xmlBody = ApiHelpers.SerializeToXml(requestBody, "Req");
-
          // HTTPリクエストの作成
          var requestMessage = new HttpRequestMessage(HttpMethod.Post, _apiEndpoint)
          {
             Content = new StringContent(xmlBody, Encoding.UTF8, "application/xml") // UTF-8を明示
          };
-
+         // アクセストークンの取得
+         var accessToken = _authService.GetValidAccessToken(shopCode);
          // リクエストヘッダの設定
          var encodedPublicKey = ApiHelpers.GetPublicKey(shopToken); // 公開鍵取得
-         requestMessage = ApiHelpers.SetRequestHeaders(requestMessage, accessToken, encodedPublicKey);
-
-         // PollyContext を生成
-         var pollyContext = ApiHelpers.CreatePollyContext("Yahoo", requestMessage, shopToken.SellerId);
-
-         // HTTPリクエストを送信
-         var response = _requestHandler.SendAsync(requestMessage, pollyContext).Result;
-
-         // レスポンス処理
-         if (!response.IsSuccessStatusCode)
-            throw new Exception($"Yahoo APIリクエストが失敗しました: {response.ReasonPhrase}");
-
-         // レスポンスボディを取得
-         var responseBody = response.Content.ReadAsStringAsync().Result;
-
-         // レスポンスXMLをパース
-         var parsedData = ParseResponseXml(responseBody, outputFields);
-         return (response, parsedData);
+         return ApiHelpers.SetRequestHeaders(requestMessage, accessToken, encodedPublicKey);
       }
 
-      /// <summary>
-      /// レスポンスXMLをパースして動的コレクションを生成
-      /// </summary>
-      private List<Dictionary<string, object?>> ParseResponseXml(string responseXml, List<string> outputFields)
+      // レスポンスXMLをパースして動的コレクションを生成
+      private YahooOrderListResult ParseResponseXml(string responseXml, List<string> outputFields)
       {
          // OrderInfo の要素を取得
-         var xDocument = XDocument.Parse(responseXml);
-         var orderElements = xDocument.Descendants("OrderInfo");
+         var document = XDocument.Parse(responseXml);
+         // ResultSetノードを解析
+         var resultSetElement = document.Root;
+         if (resultSetElement == null || resultSetElement.Name.LocalName != "Result")
+            throw new InvalidOperationException("ResultノードがレスポンスXMLに存在しません。");
 
-         // フィールドの型情報を準備
-         var validFields = outputFields
-             .Where(field => YahooOrderListOrderInfo.FieldDefinitions.ContainsKey(field)) // 定義済みのフィールドのみ処理
-             .ToList();
+         var result = new YahooOrderListResult
+         {
+            Status = resultSetElement.Element("Status")?.Value
+               ?? throw new InvalidOperationException("StatusノードがレスポンスXMLに存在しません。"),
+            Search = new YahooOrderListSearch
+            {
+               TotalCount = int.Parse(resultSetElement.Descendants("TotalCount").First().Value),
+               OrderInfo = ParseOrderInfo(resultSetElement, outputFields)
+            }
+         };
+         return result;
+      }
 
-         // OrderInfo を辞書のリストに変換
-         var results = orderElements
-             .Select(orderElement => validFields
-                 .ToDictionary(
-                     field => field,
-                     field =>
-                     {
-                        var elementValue = orderElement.Element(field)?.Value;
-                        return elementValue != null
-                             ? Convert.ChangeType(elementValue, YahooOrderListOrderInfo.FieldDefinitions[field]) // 型変換
-                             : null; // 値がない場合は null
-                     }
-                 )
-             ).ToList();
+      // OrderInfo 動的フィールドをパース
+      private List<YahooOrderListOrderInfo> ParseOrderInfo(XElement resultSetElement, List<string> outputFields)
+      {
+         var node = resultSetElement.Descendants("OrderInfo");
+         var hasItems = node.Elements("Item").Any();
+         var excludeNames = new HashSet<string> { "Item", "Index", "UsePointType" };
 
-         return results;
+         return node.Select(orderInfo => new YahooOrderListOrderInfo()
+            {
+               Index = int.Parse(orderInfo.Element("Index")?.Value ?? "0"),
+               Fields = SetFields(orderInfo.Elements().Where(e => !excludeNames.Contains(e.Name.LocalName))),
+               Items = hasItems ? SetFields(orderInfo.Descendants("Item").Elements()) : null
+            }
+         ).ToList();
+      }
+
+      private Dictionary<string, object> SetFields(IEnumerable<XElement> orderInfo)
+      {
+         return orderInfo.Elements().ToDictionary(
+            e => e.Name.LocalName,
+            e =>
+            {
+               var fieldType = YahooOrderListFieldDefinitions.FieldDefinitions.GetValueOrDefault(e.Name.LocalName);
+               return fieldType != null ? Convert.ChangeType(e.Value, fieldType) : e.Value;
+            }
+         );
       }
    }
 }

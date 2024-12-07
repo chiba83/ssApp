@@ -8,6 +8,7 @@ using ssAppServices.Api.Yahoo;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -56,10 +57,11 @@ namespace ssApptests.ssAppServices.Api
          };
 
          // 出力フィールドの選択
-         var outputFields = new List<string> { "OrderId", "OrderTime" };
+         var outputFields = new List<string> { "OrderId", "OrderTime", "ItemYahooAucId", "ItemYahooAucMerchantId" };
 
          // Act: Yahoo注文検索APIを呼び出す
-         var (httpResponse, parsedData) = _yahooOrderList.GetOrderSearchWithResponse(searchCondition, outputFields, YahooShop.Yahoo_Yours);
+         var (httpResponse, responseData) = _yahooOrderList.GetOrderSearchWithResponse(searchCondition, outputFields, YahooShop.Yahoo_Yours);
+         var parsedData = responseData.Search.OrderInfo;
 
          // レスポンス総件数とコレクション件数が一致していること
          var totalCount = int.Parse(XDocument.Parse(httpResponse.Content.ReadAsStringAsync().Result)
@@ -68,9 +70,11 @@ namespace ssApptests.ssAppServices.Api
          Assert.That(parsedData.Count, Is.EqualTo(totalCount), "レスポンス総件数とパース済みコレクション件数が一致しません。");
 
          // リクエストしたフィールドがレスポンスにすべて含まれていること
-         var missingFields = parsedData
-             .SelectMany(record => outputFields.Where(field => !record.ContainsKey(field)))
-             .Distinct().ToList();
+         var f1 = parsedData.SelectMany(x => x.Fields.Keys).Distinct().ToList();
+         var f2 = parsedData.SelectMany(x => x.Items.Keys).Distinct().ToList();
+         var rpFields = f1.Concat(f2);
+
+         var missingFields = rpFields.Where(x => !outputFields.Contains(x)).ToList();
          Assert.That(missingFields, Is.Empty, $"レスポンスコレクションに含まれていないフィールド: {string.Join(", ", missingFields)}");
 
          // 注文日時の範囲チェック
@@ -78,8 +82,8 @@ namespace ssApptests.ssAppServices.Api
          var orderTimeToDateTime = DateTime.ParseExact(searchCondition.OrderTimeTo, "yyyyMMddHHmmss", null);
          // parsedData 内の OrderTime をチェック
          var invalidOrders = parsedData
-             .Where(d => d.ContainsKey("OrderTime") && d["OrderTime"] != null)
-             .Select(d => DateTime.Parse(d["OrderTime"].ToString()))
+             .Where(d => d.Fields.ContainsKey("OrderTime") && d.Fields["OrderTime"] != null)
+             .Select(d => DateTime.Parse(d.Fields["OrderTime"].ToString()))
              .Where(orderTime => orderTime < orderTimeFromDateTime || orderTime > orderTimeToDateTime);
 
          // 範囲外のデータがあればNG
@@ -97,97 +101,30 @@ namespace ssApptests.ssAppServices.Api
          };
 
          // Test用 OrderIDを取得
-         var outputFields = new List<string> { "OrderId", "OrderTime" };
-         var orderSearchResponse = _yahooOrderList.GetOrderSearch(searchCondition, outputFields, YahooShop.Yahoo_Yours);
+         var requestFields = new List<string> { "OrderId", "OrderTime" };
+         var orderSearchResponse = _yahooOrderList.GetOrderSearch(searchCondition, requestFields, YahooShop.Yahoo_Yours);
 
          // GetOrderInfo の引数セット
          //var orderIds = orderSearchResponse.Where(dict => dict.ContainsKey("OrderId"))
          // .Select(dict => dict["OrderId"].ToString()).Take(5).ToList();
          var orderIds = new List<string> { "yours-ja-10050779", "yours-ja-10050811" };
-         outputFields = new List<string>
+         requestFields = new List<string>
             { "OrderId", "OrderTime", "OrderStatus", "LineId", "ItemId",
               "SubCode", "Quantity", "TotalPrice", "PayMethodName", "ShipFirstName",
-              "IsLogin", "SellerId", "ItemOption", "Inscription" };
+              "ShipStatus", "ShipMethod", "IsLogin", "SellerId", "ItemOption", "Inscription" };
 
          // GetOrderInfo 実行
-         var orderInfos = _yahooOrderInfo.GetOrderInfo(orderIds, outputFields, YahooShop.Yahoo_Yours);
+         var orderInfos = _yahooOrderInfo.GetOrderInfo(orderIds, requestFields, YahooShop.Yahoo_Yours);
 
          // Assert: 戻り値のOrderIdsが引数のOrderIdsをすべて含むか確認
-         var returnedOrderIds = orderInfos
-             .Select(orderInfo => orderInfo.ResultSet.Result.OrderInfo.Order?["OrderId"].ToString())
-             .Where(orderId => !string.IsNullOrEmpty(orderId))
-             .ToList();
+         var compOrderIds = YahooOrderInfoHelper.GetOrderIdList(orderInfos);
+         Assert.That(compOrderIds.Count, Is.EqualTo(orderIds.Count), "戻り値のOrderId数が入力のOrderIds数と一致しません。");
+         Assert.That(orderIds.Except(compOrderIds).Any(), Is.False, "戻り値のOrderIdsが入力のOrderIdsをすべて含んでいません。");
 
-         Assert.That(returnedOrderIds.Count, Is.EqualTo(orderIds.Count), "戻り値のOrderId数が入力のOrderIds数と一致しません。");
-         Assert.That(returnedOrderIds, Is.EquivalentTo(orderIds), "戻り値のOrderIdsが入力のOrderIdsをすべて含んでいません。");
-
-         // Assert: 各OrderInfoに対して詳細を検証
-         foreach (var orderId in orderIds)
-         {
-            var matchingOrderInfo = orderInfos
-                .FirstOrDefault(orderInfo => orderInfo.ResultSet.Result.OrderInfo.Order?["OrderId"]?.ToString() == orderId);
-
-            Assert.That(matchingOrderInfo, Is.Not.Null, $"OrderId '{orderId}' に対応するOrderInfoが存在しません。");
-
-            var orderDetails = matchingOrderInfo.ResultSet.Result.OrderInfo;
-
-            // outputFieldsの各フィールドが含まれるか検証
-            foreach (var field in outputFields)
-            {
-               if (YahooOrderInfoFieldDefinitions.Order.ContainsKey(field))
-               {
-                  Assert.That(orderDetails.Order.ContainsKey(field), Is.True,
-                      $"OrderId '{orderId}' のOrderノードにフィールド '{field}' がありません。");
-               }
-               else if (YahooOrderInfoFieldDefinitions.Pay.ContainsKey(field))
-               {
-                  Assert.That(orderDetails.Pay.ContainsKey(field), Is.True,
-                      $"OrderId '{orderId}' のPayノードにフィールド '{field}' がありません。");
-               }
-               else if (YahooOrderInfoFieldDefinitions.Ship.ContainsKey(field))
-               {
-                  Assert.That(orderDetails.Ship.ContainsKey(field), Is.True,
-                      $"OrderId '{orderId}' のShipノードにフィールド '{field}' がありません。");
-               }
-               else if (YahooOrderInfoFieldDefinitions.Seller.ContainsKey(field))
-               {
-                  Assert.That(orderDetails.Seller.ContainsKey(field), Is.True,
-                      $"OrderId '{orderId}' のSellerノードにフィールド '{field}' がありません。");
-               }
-               else if (YahooOrderInfoFieldDefinitions.Buyer.ContainsKey(field))
-               {
-                  Assert.That(orderDetails.Buyer.ContainsKey(field), Is.True,
-                      $"OrderId '{orderId}' のBuyerノードにフィールド '{field}' がありません。");
-               }
-               else if (YahooOrderInfoFieldDefinitions.Detail.ContainsKey(field))
-               {
-                  Assert.That(orderDetails.Detail.ContainsKey(field), Is.True,
-                      $"OrderId '{orderId}' のDetailノードにフィールド '{field}' がありません。");
-               }
-               else if (field == "ItemOption")
-               {
-                  // ItemOptionが存在するかのみを確認
-                  Assert.That(orderDetails.Items.Any(item => item.ItemOptions != null), Is.True,
-                      $"OrderId '{orderId}' のItemノードにItemOptionが存在しません。");
-               }
-               else if (field == "Inscription")
-               {
-                  // Inscriptionは1:1関係のため単一オブジェクトの存在を確認
-                  Assert.That(orderDetails.Items.Any(item => item.Inscription != null), Is.True,
-                      $"OrderId '{orderId}' のItemノードにInscriptionが存在しません。");
-               }
-               else if (YahooOrderInfoFieldDefinitions.Item.ContainsKey(field))
-               {
-                  // Itemノード内の動的フィールドチェック
-                  Assert.That(orderDetails.Items.Any(item => item.Item.ContainsKey(field)), Is.True,
-                      $"OrderId '{orderId}' のItemノードにフィールド '{field}' がありません。");
-               }
-               else
-               {
-                  Assert.Fail($"フィールド '{field}' は未定義のため検証できません。");
-               }
-            }
-         }
+         // Assert: リクエストFieldに対するレスポンスFieldの一致検証
+         var fields = YahooOrderInfoHelper.GetOrderInfoAllFields(orderInfos);
+         var exceptFields = requestFields.Except(fields).ToList();
+         Assert.That(exceptFields.Any(), Is.False, $"フィールド '{string.Join(" , ", exceptFields)}' がありません。");
       }
    }
 }

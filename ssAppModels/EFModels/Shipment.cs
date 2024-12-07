@@ -67,26 +67,26 @@ public partial class Shipment
     /// 出荷先市区町村
     /// </summary>
     [Required]
-    [StringLength(50)]
+    [StringLength(80)]
     public string ShipCity { get; set; }
 
     /// <summary>
     /// 出荷先住所１
     /// </summary>
-    [StringLength(50)]
+    [StringLength(100)]
     public string ShipAddress1 { get; set; }
 
     /// <summary>
     /// 出荷先住所２
     /// </summary>
-    [StringLength(50)]
+    [StringLength(100)]
     public string ShipAddress2 { get; set; }
 
     /// <summary>
     /// 出荷先氏名
     /// </summary>
     [Required]
-    [StringLength(40)]
+    [StringLength(60)]
     public string ShipName { get; set; }
 
     /// <summary>
