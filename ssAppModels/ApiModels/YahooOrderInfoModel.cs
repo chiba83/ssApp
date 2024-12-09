@@ -239,6 +239,7 @@ namespace ssAppModels.ApiModels
          { "ShipFirstName", typeof(string) }, // お届け先名前
          { "ShipLastName", typeof(string) }, // お届け先名字
          { "ShipZipCode", typeof(string) }, // お届け先郵便番号
+         { "ShipPrefecture", typeof(string) }, // お届け先都道府県
          { "ShipCity", typeof(string) }, // お届け先市区郡
          { "ShipAddress1", typeof(string) }, // お届け先住所1
          { "ShipAddress2", typeof(string) }, // お届け先住所2
@@ -309,8 +310,8 @@ namespace ssAppModels.ApiModels
 
           // クーポン関連
           { "CouponData", typeof(string) }, // ストアクーポン
-          { "CouponDiscount", typeof(int) }, // クーポンの値引き額
-          { "CouponUseNum", typeof(int) }, // クーポン適用枚数
+          { "CouponDiscount", typeof(int) }, // ストアクーポンの値引き額
+          { "CouponUseNum", typeof(int) }, // ストアクーポン適用枚数
 
           // 発送関連
           { "LeadTimeText", typeof(string) }, // 発送日テキスト

@@ -15,6 +15,10 @@
    "T4TemplatePath": null,
    "Tables": [
       {
+         "Name": "[dbo].[DailyOrderNews]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Delivery]",
          "ObjectType": 0
       },

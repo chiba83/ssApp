@@ -13,11 +13,6 @@ namespace ssAppModels.ApiModels
             .ToList();
       }
 
-      //public static object GetOrderInfoFieldValue(YahooOrderInfoResponse orderInfoResponse, string orderId, string field)
-      //{
-      //   var orderInfo = orderInfoResponse.ResultSet.Result.OrderInfo;
-      //}
-
       // OrderInfoのItemフィールドを取得
       public static List<string> GetOrderInfoItemFields(List<YahooOrderInfoResponse> orderInfoResponses)
       {

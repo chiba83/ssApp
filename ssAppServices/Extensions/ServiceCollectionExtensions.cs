@@ -5,6 +5,7 @@ using ssAppModels.EFModels;
 using ssAppCommon.Logging;
 using ssAppServices.Api;
 using ssAppServices.Api.Yahoo;
+using ssAppServices.Apps;
 
 namespace ssAppServices.Extensions
 { 
@@ -30,6 +31,8 @@ namespace ssAppServices.Extensions
          services.AddScoped<YahooOrderList>();
          // Yahoo注文詳細サービス
          services.AddScoped<YahooOrderInfo>();
+         // DailyOrderNews更新サービス
+         services.AddScoped<SetDailyOrderNews>();
 
          return services;
       }

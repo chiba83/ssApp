@@ -4,6 +4,9 @@ using Microsoft.Extensions.Options;
 using ssAppModels.EFModels;
 using ssAppModels.ApiModels;
 using ssAppCommon.Extensions;
+using Microsoft.VisualBasic.FileIO;
+using Newtonsoft.Json.Linq;
+using Azure;
 
 /**************************************************************/
 /*                        YahooOrderInfo                      */
@@ -56,6 +59,21 @@ namespace ssAppServices.Api.Yahoo
          List<string> outputFields,
          YahooShop shopCode)
       {
+         // HTTPレスポンスを無視し、パース結果のみ返す
+         var (_, yahooOrderInfoResponses) 
+            = GetOrderInfoWithResponse(orderIds, outputFields, shopCode);
+         return yahooOrderInfoResponses;
+      }
+
+      /// <summary>
+      /// Yahoo注文検索APIを呼び出し、HTTPレスポンスも返す（テスト用）
+      /// </summary>
+      public (List<HttpResponseMessage> responses, List<YahooOrderInfoResponse>) 
+         GetOrderInfoWithResponse(
+            List<string> orderIds,
+            List<string> outputFields,
+            YahooShop shopCode)
+      {
          // Validation Check
          Guard.AgainstNull(orderIds, nameof(orderIds));
          ApiHelpers.AreAllFieldsValid(outputFields, YahooOrderInfoFieldDefinitions.GetAllFields());
@@ -64,6 +82,7 @@ namespace ssAppServices.Api.Yahoo
 
          // リクエストオブジェクトの作成
          var yahooOrderInfoResponses = new List<YahooOrderInfoResponse>();
+         var responses = new List<HttpResponseMessage>();
 
          foreach (var orderId in orderIds)
          {
@@ -75,6 +94,7 @@ namespace ssAppServices.Api.Yahoo
             var response = _requestHandler.SendAsync(requestMessage, pollyContext).Result;
             if (!response.IsSuccessStatusCode)
                throw new Exception($"Yahoo APIリクエストが失敗しました: {response.ReasonPhrase}");
+            responses.Add(response);
 
             // レスポンスボディを取得
             var responseBody = response.Content.ReadAsStringAsync().Result;
@@ -83,7 +103,7 @@ namespace ssAppServices.Api.Yahoo
             yahooOrderInfoResponses.Add(parsedData);
             Thread.Sleep(300); // 引数はミリ秒 (1秒 = 1000ミリ秒)
          }
-         return yahooOrderInfoResponses;
+         return (responses, yahooOrderInfoResponses);
       }
 
       private HttpRequestMessage SetHttpRequest(string orderId, List<string> outputFields, ShopToken shopToken, YahooShop shopCode)
@@ -141,10 +161,11 @@ namespace ssAppServices.Api.Yahoo
       private YahooOrderInfoDynamic ParseOrderInfo(XElement orderInfoElement)
       {
          var orderInfo = new YahooOrderInfoDynamic();
+         var fieldDefinitions = YahooOrderInfoFieldDefinitions.GetAllFields();
 
          // Orderグループの動的フィールド
          var orderFields = orderInfoElement.Elements()
-             .Where(e => YahooOrderInfoFieldDefinitions.Order.ContainsKey(e.Name.LocalName))
+             .Where(e => fieldDefinitions.ContainsKey(e.Name.LocalName))
              .ToDictionary(
                  e => e.Name.LocalName,
                  e => Convert.ChangeType(e.Value, YahooOrderInfoFieldDefinitions.Order[e.Name.LocalName])
@@ -155,33 +176,33 @@ namespace ssAppServices.Api.Yahoo
          // Payノードの解析 (1:1)
          var payElement = orderInfoElement.Element("Pay");
          if (payElement != null)
-            orderInfo.Pay = ParseDynamicNode(payElement, YahooOrderInfoFieldDefinitions.Pay);
+            orderInfo.Pay = ParseDynamicNode(payElement, fieldDefinitions);
 
          // Shipノードの解析 (1:1)
          var shipElement = orderInfoElement.Element("Ship");
          if (shipElement != null)
-            orderInfo.Ship = ParseDynamicNode(shipElement, YahooOrderInfoFieldDefinitions.Ship);
+            orderInfo.Ship = ParseDynamicNode(shipElement, fieldDefinitions);
 
          // Sellerノードの解析 (1:1)
          var sellerElement = orderInfoElement.Element("Seller");
          if (sellerElement != null)
-            orderInfo.Seller = ParseDynamicNode(sellerElement, YahooOrderInfoFieldDefinitions.Seller);
+            orderInfo.Seller = ParseDynamicNode(sellerElement, fieldDefinitions);
 
          // Buyerノードの解析 (1:1)
          var buyerElement = orderInfoElement.Element("Buyer");
          if (buyerElement != null)
-            orderInfo.Buyer = ParseDynamicNode(buyerElement, YahooOrderInfoFieldDefinitions.Buyer);
+            orderInfo.Buyer = ParseDynamicNode(buyerElement, fieldDefinitions);
 
          // Detailノードの解析 (1:1)
          var detailElement = orderInfoElement.Element("Detail");
          if (detailElement != null)
-            orderInfo.Detail = ParseDynamicNode(detailElement, YahooOrderInfoFieldDefinitions.Detail);
+            orderInfo.Detail = ParseDynamicNode(detailElement, fieldDefinitions);
 
          // Itemノードの解析 (1:N)
          var itemElements = orderInfoElement.Elements("Item");
          foreach (var itemElement in itemElements)
          {
-            orderInfo.Items?.Add(ParseItem(itemElement));
+            orderInfo.Items?.Add(ParseItem(itemElement, fieldDefinitions));
          }
          return orderInfo;
       }
@@ -192,11 +213,11 @@ namespace ssAppServices.Api.Yahoo
             .Where(field => fieldDefinitions.ContainsKey(field.Name.LocalName))
             .ToDictionary(
                field => field.Name.LocalName,
-               field => Convert.ChangeType(field.Value, fieldDefinitions[field.Name.LocalName])
+               field => ApiHelpers.CreateInstance(fieldDefinitions[field.Name.LocalName], field.Value)
             );
       }
 
-      private YahooOrderInfoItem ParseItem(XElement itemElement)
+      private YahooOrderInfoItem ParseItem(XElement itemElement, Dictionary<string, Type> fieldDefinitions)
       {
          var item = new YahooOrderInfoItem
          {
@@ -206,8 +227,8 @@ namespace ssAppServices.Api.Yahoo
                   e => e.Name.LocalName,
                   e =>
                   {
-                     var fieldType = YahooOrderInfoFieldDefinitions.GetAllFields().GetValueOrDefault(e.Name.LocalName);
-                     return fieldType != null ? Convert.ChangeType(e.Value, fieldType) : e.Value;
+                     var fieldType = fieldDefinitions.GetValueOrDefault(e.Name.LocalName);
+                     return ApiHelpers.CreateInstance(fieldType, e.Value);
                   }
                )
          };
@@ -233,6 +254,5 @@ namespace ssAppServices.Api.Yahoo
          }
          return item;
       }
-
    }
 }

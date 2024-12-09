@@ -121,5 +121,22 @@ namespace ssAppServices.Api
             { "HttpRequest", request }
          };
       }
+
+      /// <summary>
+      /// 値を型に応じてインスタンス化
+      /// </summary>
+      public static object CreateInstance(Type fieldType, string value)
+      {
+         if (fieldType == typeof(string))
+         {
+            return !string.IsNullOrEmpty(value) ? value : string.Empty;
+         }
+         else
+         {
+            return fieldType != null && !string.IsNullOrEmpty(value)
+                ? Convert.ChangeType(value, fieldType)
+                : Activator.CreateInstance(fieldType) ?? fieldType;
+         }
+      }
    }
 }

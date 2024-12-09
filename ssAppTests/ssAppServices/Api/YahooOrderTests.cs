@@ -52,7 +52,7 @@ namespace ssApptests.ssAppServices.Api
          // Arrange: 検索条件の作成
          var searchCondition = new YahooOrderListCondition
          {
-            OrderTimeFrom = DateTime.Now.AddDays(-15).ToString("yyyyMMddHHmmss"), // 修正後フォーマット
+            OrderTimeFrom = DateTime.Now.AddDays(-3).ToString("yyyyMMddHHmmss"), // 修正後フォーマット
             OrderTimeTo = DateTime.Now.ToString("yyyyMMddHHmmss") // 修正後フォーマット
          };
 
@@ -88,6 +88,10 @@ namespace ssApptests.ssAppServices.Api
 
          // 範囲外のデータがあればNG
          Assert.That(invalidOrders.Any(), Is.False, "OrderTime が検索条件の範囲外のデータが含まれています。");
+
+         // OrderId にnullが含まれていないこと
+         var orderIds = YahooOrderSearchHelper.GetOrderIdList(responseData);
+         Assert.That(orderIds.Any(x => x == null), Is.False, "OrderId にnullが含まれています。");
       }
 
       [Test]

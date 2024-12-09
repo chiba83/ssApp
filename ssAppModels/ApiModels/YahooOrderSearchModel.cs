@@ -72,6 +72,25 @@ namespace ssAppModels.ApiModels
       public string? SubCode { get; set; } // サブコード
    }
 
+//※1 OrderID か 「OrderTimeを始めとする日時指定（※2）」 のいずれか必須です。
+//※3 複数マッチはカンマ区切りで指定します。
+//※4 注文ステータスのリクエストは以下の組み合わせとなります。
+//　　　・『新規注文の検索』　⇒「IsSeen: false 、かつOrderStatus: 2」
+//　　　・『処理中の検索』　　⇒「IsSeen: true 、 かつOrderStatus: 2」
+//　　　・『処理中と新規注文の検索』　⇒「OrderStatus: 2」
+//出荷ステータス「ShipStatus」支払方法によって「出荷不可」か「出荷可」とします。
+//  0 : 出荷不可、1 : 出荷可、2 : 出荷処理中、3 : 出荷済み、4 : 着荷済み
+   public static class YahooOrderListConditionFormat
+   {
+      public static readonly YahooOrderListCondition DailyOrderNews = new()
+      {
+         IsSeen = false,
+         OrderStatus = "2",
+         ShipStatus = "1",
+         OrderTimeFrom = DateTime.Now.AddDays(-30).ToString("yyyyMMddHHmmss"),
+      };
+   }
+
    /**************************************************************/
    /*            YahooOrderListレスポンスのモデルCLASS            */
    /*************************************************************/
@@ -233,6 +252,19 @@ namespace ssAppModels.ApiModels
          { "TotalImmediateBonusAmount", typeof(decimal) }, // 特典の一部利用合計額")
          { "TotalImmediateBonusRatio", typeof(decimal) }, // 特典の一部利用合計割合")
          { "SocialGiftType", typeof(int) } // ソーシャルギフトタイプ")
+      };
+
+      // DailyOrderNews用の出力フィールドリスト
+      public static readonly List<string> ForDailyOrderNews = new()
+      {
+         "OrderId", // 注文ID
+         "IsActive", // 注文有効フラグ
+         "IsSeen", // 閲覧済みフラグ
+         "OrderTime", // 注文日時
+         "OrderStatus", // 注文ステータス
+         "PayStatus", // 入金ステータス
+         "SettleStatus", // 決済ステータス
+         "ShipStatus", // 出荷ステータス
       };
    }
 }

@@ -165,7 +165,7 @@ namespace ssAppServices.Api.Yahoo
 
       private Dictionary<string, object> SetFields(IEnumerable<XElement> orderInfo)
       {
-         return orderInfo.Elements().ToDictionary(
+         return orderInfo.ToDictionary(
             e => e.Name.LocalName,
             e =>
             {

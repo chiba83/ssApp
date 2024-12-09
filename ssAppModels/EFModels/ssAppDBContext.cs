@@ -13,6 +13,8 @@ public partial class ssAppDBContext : DbContext
     {
     }
 
+    public virtual DbSet<DailyOrderNews> DailyOrderNews { get; set; }
+
     public virtual DbSet<Delivery> Deliveries { get; set; }
 
     public virtual DbSet<ErrorLog> ErrorLogs { get; set; }
@@ -39,6 +41,45 @@ public partial class ssAppDBContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<DailyOrderNews>(entity =>
+        {
+            entity.Property(e => e.ConsumptionTaxRate).HasComment("消費税率");
+            entity.Property(e => e.CouponDiscount).HasComment("クーポン値引き（税込）");
+            entity.Property(e => e.DeliveryCode)
+                .IsFixedLength()
+                .HasComment("配送マスタの一意の配送コード");
+            entity.Property(e => e.DeliveryFee).HasComment("配送料");
+            entity.Property(e => e.LastOrderDate).HasComment("分割注文の最新注文日時");
+            entity.Property(e => e.OrderCode).HasComment("注文の一意コード（各モールの注文ID）");
+            entity.Property(e => e.OrderDate).HasComment("注文日時（楽天は注文確定日時）");
+            entity.Property(e => e.OrderDetailCode).HasComment("注文明細の一意コード");
+            entity.Property(e => e.OrderDetailTotal).HasComment("注文明細合計（税込）=オリジナル価格-クーポン値引き");
+            entity.Property(e => e.OrderQty).HasComment("注文数量（3桁：999）");
+            entity.Property(e => e.OriginalPrice).HasComment("オリジナル価格（税込）");
+            entity.Property(e => e.PackingCont1).HasComment("梱包内容1（配送ラベルへの記載用メモ）");
+            entity.Property(e => e.PackingCont2).HasComment("梱包内容2（配送ラベルへの記載用メモ）");
+            entity.Property(e => e.PackingCont3).HasComment("梱包内容3（配送ラベルへの記載用メモ）");
+            entity.Property(e => e.PackingSort).HasComment("注文商品コードをカンマ区切りで列挙。ソート用。商品毎にピッキングを行わせ効率を上げる");
+            entity.Property(e => e.ShipAddress1).HasComment("出荷先住所２");
+            entity.Property(e => e.ShipAddress2).HasComment("出荷先住所３");
+            entity.Property(e => e.ShipCity).HasComment("出荷先市区町村");
+            entity.Property(e => e.ShipEmail).HasComment("出荷先メールアドレス");
+            entity.Property(e => e.ShipName).HasComment("出荷先氏名");
+            entity.Property(e => e.ShipNotes).HasComment("記事（配送ラベルへの記載用メモ）");
+            entity.Property(e => e.ShipPrefecture).HasComment("出荷先都道府県");
+            entity.Property(e => e.ShipTel).HasComment("出荷先電話番号");
+            entity.Property(e => e.ShipZip)
+                .IsFixedLength()
+                .HasComment("出荷先郵便番号");
+            entity.Property(e => e.ShipmentCode)
+                .IsFixedLength()
+                .HasComment("出荷の一意コード（yymmdd-xxx-999：出荷日-配送コード-連番）");
+            entity.Property(e => e.ShipmentDate).HasComment("出荷日");
+            entity.Property(e => e.ShopCode).HasComment("Shopマスタの一意のショップコード");
+            entity.Property(e => e.Skucode).HasComment("SKUの一意コード");
+            entity.Property(e => e.TrackingNumber).HasComment("追跡用の伝票番号（追跡番号は各社12桁）");
+        });
+
         modelBuilder.Entity<Delivery>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK_Delivery_ID");
