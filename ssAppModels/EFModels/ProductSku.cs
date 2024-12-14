@@ -98,7 +98,4 @@ public partial class ProductSku
 
     [InverseProperty("SkucodeNavigation")]
     public virtual ICollection<SetProductSku> SetProductSkuSkucodeNavigations { get; set; } = new List<SetProductSku>();
-
-    [InverseProperty("SkucodeNavigation")]
-    public virtual ICollection<Skuconversion> Skuconversions { get; set; } = new List<Skuconversion>();
 }

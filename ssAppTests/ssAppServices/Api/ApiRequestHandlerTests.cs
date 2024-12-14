@@ -47,7 +47,7 @@ namespace ssApptests.ssAppServices.Api
         [Test]
         public async Task SendAsync_Success()
         {
-            var shopToken = ApiHelpers.GetShopToken(_dbContext, YahooShop.Yahoo_Yours);
+            var shopToken = ssAppDBHelper.GetShopToken(_dbContext, YahooShop.Yahoo_Yours);
             var parameters = new Dictionary<string, string>
             {
                 { "grant_type", GrantType.refresh_token.ToString() },
@@ -81,7 +81,7 @@ namespace ssApptests.ssAppServices.Api
         [Test]
         public async Task SendAsync_BadRequest()
         {
-            var shopToken = ApiHelpers.GetShopToken(_dbContext, YahooShop.Yahoo_Yours);
+            var shopToken = ssAppDBHelper.GetShopToken(_dbContext, YahooShop.Yahoo_Yours);
             var grant_type = $"invalid_grant_{DateTime.Now.ToString()}";
             var parameters = new Dictionary<string, string>
             {

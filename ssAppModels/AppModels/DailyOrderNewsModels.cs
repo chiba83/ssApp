@@ -53,7 +53,7 @@ namespace ssAppModels.AppModels
       public int Quantity { get; set; }                           // 数量
       public int ItemTaxRatio { get; set; }                       // 消費税率
       public int OriginalPrice { get; set; }                      // 値引き前の単価
-      public int? CouponDiscount { get; set; }                     // ストアクーポンの値引き額
+      public int CouponDiscount { get; set; }                     // ストアクーポンの値引き額
       public int UnitPrice { get; set; }                          // 商品単価
       public string SellerId { get; set; } = string.Empty;        // セラーID
    }

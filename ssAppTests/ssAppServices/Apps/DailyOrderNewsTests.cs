@@ -1,12 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using ssAppModels.ApiModels;
 using ssAppModels.AppModels;
 using ssAppModels.EFModels;
 using ssAppServices;
-using ssAppServices.Api.Yahoo;
 using ssAppServices.Apps;
 using ssAppTests.ssAppServices.Helpers;
 using System;
@@ -24,8 +22,6 @@ namespace ssAppTests.ssAppServices.Apps
    {
       private ServiceProvider _serviceProvider;
       private ssAppDBContext _dbContext;
-      private YahooOrderList _yahooOrderList;
-      private YahooOrderInfo _yahooOrderInfo;
       private SetDailyOrderNews _setDailyOrderNews;
 
       [SetUp]
@@ -40,8 +36,6 @@ namespace ssAppTests.ssAppServices.Apps
          _serviceProvider = services.BuildServiceProvider();
 
          _dbContext = _serviceProvider.GetRequiredService<ssAppDBContext>();
-         _yahooOrderList = _serviceProvider.GetRequiredService<YahooOrderList>();
-         _yahooOrderInfo = _serviceProvider.GetRequiredService<YahooOrderInfo>();
          _setDailyOrderNews = _serviceProvider.GetRequiredService<SetDailyOrderNews>();
       }
 
@@ -53,59 +47,95 @@ namespace ssAppTests.ssAppServices.Apps
       }
 
       [Test]
-      public void T01_YahooOrderSearch_Success()
+      public void T01_YahooOrderInfo_Success()
       {
-         var orderList = Run_YahooOrderSearch();
-         Assert.That(orderList.Any(x => x.OrderId.IsNullOrEmpty()), Is.False, $"NullのOrderIdがあります。");
-      }
-
-      [Test]
-      public void T02_YahooOrderInfo_Success()
-      {
-         var orderList = Run_YahooOrderSearch().ToList();
-         var (httpResponses, orderInfo) = _setDailyOrderNews.GetYahooOrderInfoWithResponse(orderList);
-
-         /******************************************************************************/
-         // データ件数チェック
-         // orderInfoのデータ件数とhttpResponsesの件数が一致すること。Response件数はGetOrderInfoItemCountで取得
-         Assert.That(orderInfo.Any(), Is.True, $"DailyOrderNewsYahooデータがありません。");
-         var rowNumber = YahooApiHelpers.GetOrderInfoItemCount(httpResponses);
-         Assert.That(orderInfo.Count, Is.EqualTo(rowNumber), "orderInfoのデータ件数とhttpResponsesの件数が一致しません。");
-         Console.WriteLine($"データ件数（注文Item数）： {rowNumber}");
-         Console.WriteLine("--------------------------------------------------");
-
-
-         /******************************************************************************/
-         // DailyOrderNewsのフィールド値を全件チェック
-         // Yahoo注文情報のフィールド値を取得
-         var fieldDefinitions = YahooOrderInfoFieldDefinitions.GetAllFields();
-         var itemFieldList = YahooOrderInfoFieldDefinitions.Item.Keys.ToList();
-         var fields = DailyOrderNewsModelHelper.GetYahooOrderInfoFields();
-
-         foreach (var rec in orderInfo)
+         foreach (YahooShop shop in Enum.GetValues(typeof(YahooShop)))
          {
-            string lineId =  rec.LineId.ToString();
-            var itemValues = YahooApiHelpers.GetOrderInfoItemValues(httpResponses, rec.OrderId, lineId, fieldDefinitions);
+            Console.WriteLine($"● 検査ショップ： {shop.ToString()}");
+            Console.WriteLine("--------------------------------------------------");
+            var (httpOrderList, orderList) = Run_YahooOrderSearch(shop);
+            var (httpResponses, orderInfo) = _setDailyOrderNews.GetYahooOrderInfoWithResponse(orderList, shop);
 
-            foreach (var field in fields)
+            // orderListのデータ件数とhttpOrderListの件数が一致すること。Response件数はGetOrderListTotalで取得
+            var rowNumber = YahooApiHelpers.GetOrderListTotal(httpOrderList);
+            Assert.That(orderList.Count, Is.EqualTo(rowNumber), "orderListのデータ件数とhttpResponsesの件数が一致しません。");
+
+            /******************************************************************************/
+            // DailyOrderNewsYahooSearchのフィールド値を全件チェック
+            // Yahoo注文情報のフィールド値を取得
+            var fieldDefinitions = YahooOrderListFieldDefinitions.FieldDefinitions;
+            var fields = DailyOrderNewsModelHelper.YahooOrderSearchFields();
+            int i = 0;
+            foreach (var rec in orderList)
             {
-               //field名がItemOptionの場合はスキップ
-               if (field == "ItemOption") continue;
-
-               if (itemFieldList.Contains(field))
-                  Assert.That(rec.GetType().GetProperty(field).GetValue(rec), Is.EqualTo(itemValues[field]), $"{field}の値が一致しません。");
-               else
+               i++;
+               foreach (var field in fields)
                {
+                  var value = YahooApiHelpers.GetOrderListFieldValue(httpOrderList, i, field, fieldDefinitions);
+                  Assert.That(rec.GetType().GetProperty(field)?.GetValue(rec), Is.EqualTo(value), $"{field}の値が一致しません。");
+               }
+            }
+
+            /******************************************************************************/
+            // データ件数チェック
+            // orderInfoのデータ件数とhttpResponsesの件数が一致すること。Response件数はGetOrderInfoItemCountで取得
+            rowNumber = YahooApiHelpers.GetOrderInfoItemCount(httpResponses);
+            Assert.That(orderInfo.Count, Is.EqualTo(rowNumber), "orderInfoのデータ件数とhttpResponsesの件数が一致しません。");
+            Console.WriteLine($"データ件数（注文Item数）： {rowNumber}");
+            Console.WriteLine("--------------------------------------------------");
+
+            /******************************************************************************/
+            // DailyOrderNewsのフィールド値を全件チェック
+            // Yahoo注文情報のフィールド値を取得
+            fieldDefinitions = YahooOrderInfoFieldDefinitions.GetAllFields();
+            var itemFieldList = YahooOrderInfoFieldDefinitions.Item.Keys.ToList();
+            fields = DailyOrderNewsModelHelper.GetYahooOrderInfoFields();
+
+            foreach (var rec in orderInfo)
+            {
+               string lineId = rec.LineId.ToString();
+               var itemValues = YahooApiHelpers.GetOrderInfoItemValues(httpResponses, rec.OrderId, lineId, fieldDefinitions);
+               var itemOption = YahooApiHelpers.GetItemOptionValue(httpResponses, rec.OrderId, lineId);
+               var inscription = YahooApiHelpers.GetInscriptionValue(httpResponses, rec.OrderId, lineId);
+
+               foreach (var field in fields)
+               {
+                  if (field == "ItemOption")
+                  {
+                     Assert.That(rec.GetType().GetProperty(field)?.GetValue(rec), Is.EqualTo(itemOption), $"{field}の値が一致しません。");
+                     continue;
+                  }
+                  if (field == "Inscription")
+                  {
+                     Assert.That(rec.GetType().GetProperty(field)?.GetValue(rec), Is.EqualTo(inscription), $"{field}の値が一致しません。");
+                     continue;
+                  }
+                  if (itemFieldList.Contains(field))
+                  {
+                     Assert.That(rec.GetType().GetProperty(field)?.GetValue(rec), Is.EqualTo(itemValues[field]), $"{field}の値が一致しません。");
+                     continue;
+                  }
                   var value = YahooApiHelpers.GetOrderInfoFieldValue(httpResponses, rec.OrderId, field, fieldDefinitions);
-                  Assert.That(rec.GetType().GetProperty(field).GetValue(rec), Is.EqualTo(value), $"{field}の値が一致しません。");
+                  Assert.That(rec.GetType().GetProperty(field)?.GetValue(rec), Is.EqualTo(value), $"{field}の値が一致しません。");
                }
             }
          }
       }
 
-      private List<DailyOrderNewsYahooSearch> Run_YahooOrderSearch()
+      [Test]
+      public void T02_RunDailyOrderNewsWorkflow()
       {
-         var orderList = _setDailyOrderNews.GetYahooOrderList();
+         var (DON, DONY) = _setDailyOrderNews.RunDailyOrderNewsWorkflow();
+         // DONのデータ件数とDONYの件数が一致すること
+         Assert.That(DON.Count, Is.EqualTo(DONY.Count), "DailyOrderNewsとDailyOrderNewsYahooのデータ件数が一致しません。");
+         // DONYのデータ件数とDailyOrderNews.ShopCodeが"Yahoo"で始まる件数が一致すること
+         var yahooCount = _dbContext.DailyOrderNews.Count(x => x.ShopCode.StartsWith("Yahoo"));
+         Assert.That(DONY.Count, Is.EqualTo(yahooCount), "DailyOrderNewsYahooのデータ件数とDailyOrderNews.ShopCodeが\"Yahoo\"で始まる件数が一致しません。");
+      }
+
+      private (HttpResponseMessage, List<DailyOrderNewsYahooSearch>) Run_YahooOrderSearch(YahooShop yahooShop)
+      {
+         var (httpResponses, orderList) = _setDailyOrderNews.GetYahooOrderListWithResponse(yahooShop);
          int rowNumber = 1;
          foreach (var order in orderList)
          {
@@ -115,7 +145,7 @@ namespace ssAppTests.ssAppServices.Apps
             Console.WriteLine("--------------------------------------------------");
             rowNumber++;
          }
-         return orderList;
+         return (httpResponses, orderList);
       }
    }
 }

@@ -12,6 +12,23 @@ namespace ssAppModels.ApiModels
       Yahoo_LARAL,
       Yahoo_Yours
    }
+   public enum RakutenShop
+   {
+      Rakuten_ENZO
+   }
+   public enum AllShop
+   {
+      All,
+      Yahoo_LARAL,
+      Yahoo_Yours,
+      Rakuten_ENZO
+   }
+   public enum Mall
+   {
+      Yahoo,
+      Rakuten
+   }
+
    // OAuth 2.0 のグラントタイプを管理する列挙型
    public enum GrantType
    {

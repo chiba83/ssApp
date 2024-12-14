@@ -13,15 +13,6 @@ namespace ssAppServices.Api
 {
    public static class ApiHelpers
    {
-      /// <summary>
-      /// 指定されたShopCodeに対応するShopTokenを取得
-      /// </summary>
-      public static ShopToken GetShopToken(ssAppDBContext dbContext, YahooShop shopCode)
-      {
-         return dbContext.ShopTokens.FirstOrDefault(st => st.ShopCode == shopCode.ToString())
-             ?? throw new Exception($"指定されたShopCode（{shopCode.ToString()}）に対応するShopTokenが見つかりません。");
-      }
-
       public static void AreAllFieldsValid(List<string> outputFields, Dictionary<string, Type> allFields)
       {
          // 無効なフィールドを特定
@@ -120,23 +111,6 @@ namespace ssAppServices.Api
             { "UserId", userId },
             { "HttpRequest", request }
          };
-      }
-
-      /// <summary>
-      /// 値を型に応じてインスタンス化
-      /// </summary>
-      public static object CreateInstance(Type fieldType, string value)
-      {
-         if (fieldType == typeof(string))
-         {
-            return !string.IsNullOrEmpty(value) ? value : string.Empty;
-         }
-         else
-         {
-            return fieldType != null && !string.IsNullOrEmpty(value)
-                ? Convert.ChangeType(value, fieldType)
-                : Activator.CreateInstance(fieldType) ?? fieldType;
-         }
       }
    }
 }

@@ -78,7 +78,7 @@ namespace ssAppServices.Api.Yahoo
          Guard.AgainstNull(orderIds, nameof(orderIds));
          ApiHelpers.AreAllFieldsValid(outputFields, YahooOrderInfoFieldDefinitions.GetAllFields());
          // ShopToken 情報の取得
-         var shopToken = ApiHelpers.GetShopToken(_dbContext, shopCode);
+         var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode);
 
          // リクエストオブジェクトの作成
          var yahooOrderInfoResponses = new List<YahooOrderInfoResponse>();
@@ -213,7 +213,7 @@ namespace ssAppServices.Api.Yahoo
             .Where(field => fieldDefinitions.ContainsKey(field.Name.LocalName))
             .ToDictionary(
                field => field.Name.LocalName,
-               field => ApiHelpers.CreateInstance(fieldDefinitions[field.Name.LocalName], field.Value)
+               field => Reflection.CreateInstance(fieldDefinitions[field.Name.LocalName], field.Value)
             );
       }
 
@@ -228,7 +228,7 @@ namespace ssAppServices.Api.Yahoo
                   e =>
                   {
                      var fieldType = fieldDefinitions.GetValueOrDefault(e.Name.LocalName);
-                     return ApiHelpers.CreateInstance(fieldType, e.Value);
+                     return Reflection.CreateInstance(fieldType, e.Value);
                   }
                )
          };

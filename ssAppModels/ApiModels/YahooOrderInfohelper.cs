@@ -9,7 +9,7 @@ namespace ssAppModels.ApiModels
       public static List<string?> GetOrderIdList(List<YahooOrderInfoResponse> orderInfoResponses)
       {
          return orderInfoResponses
-            .Select(x => x.ResultSet.Result.OrderInfo.Order?["OrderId"].ToString())
+            .Select(x => x.ResultSet.Result.OrderInfo.Order?["OrderId"]?.ToString())
             .ToList();
       }
 
@@ -17,8 +17,8 @@ namespace ssAppModels.ApiModels
       public static List<string> GetOrderInfoItemFields(List<YahooOrderInfoResponse> orderInfoResponses)
       {
          return orderInfoResponses
-            .SelectMany(x => x.ResultSet.Result.OrderInfo.Items)
-            .SelectMany(x => x.Item.Keys).Distinct().ToList()
+            .SelectMany(x => x.ResultSet.Result.OrderInfo.Items ?? Enumerable.Empty<YahooOrderInfoItem>())
+            .SelectMany(x => x.Item?.Keys ?? Enumerable.Empty<string>()).Distinct().ToList()
             ?? Enumerable.Empty<string>().ToList();
       }
 
@@ -26,7 +26,7 @@ namespace ssAppModels.ApiModels
       public static List<string> GetOrderInfoItemOptionsFields(List<YahooOrderInfoResponse> orderInfoResponses)
       {
          return orderInfoResponses
-            .SelectMany(x => x.ResultSet.Result.OrderInfo.Items)
+            .SelectMany(x => x.ResultSet.Result.OrderInfo.Items ?? Enumerable.Empty<YahooOrderInfoItem>())
             .Any(x => x.ItemOptions != null)
             ? new List<string> { "ItemOption" }
             : Enumerable.Empty<string>().ToList();
@@ -36,7 +36,7 @@ namespace ssAppModels.ApiModels
       public static List<string> GetOrderInfoInscriptionFields(List<YahooOrderInfoResponse> orderInfoResponses)
       {
          return orderInfoResponses
-            .SelectMany(x => x.ResultSet.Result.OrderInfo.Items)
+            .SelectMany(x => x.ResultSet.Result.OrderInfo.Items ?? Enumerable.Empty<YahooOrderInfoItem>())
             .Any(x => x.Inscription != null)
             ? new List<string> { "Inscription" }
             : Enumerable.Empty<string>().ToList();

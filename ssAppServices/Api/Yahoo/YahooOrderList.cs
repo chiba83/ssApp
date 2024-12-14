@@ -5,6 +5,7 @@ using ssAppModels.EFModels;
 using ssAppModels.ApiModels;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
+using ssAppCommon.Extensions;
 
 /**************************************************************/
 /*                        YahooOrderList                      */
@@ -66,7 +67,7 @@ namespace ssAppServices.Api.Yahoo
       /// <summary>
       /// Yahoo注文検索APIを呼び出し、HTTPレスポンスも返す（テスト用）
       /// </summary>
-      public (HttpResponseMessage httpResponse, YahooOrderListResult parsedData) GetOrderSearchWithResponse(
+      public (HttpResponseMessage, YahooOrderListResult) GetOrderSearchWithResponse(
          YahooOrderListCondition searchCondition,
          List<string> outputFields,
          YahooShop shopCode,
@@ -76,7 +77,7 @@ namespace ssAppServices.Api.Yahoo
          // Validation Check
          ApiHelpers.AreAllFieldsValid(outputFields, YahooOrderListFieldDefinitions.FieldDefinitions);
          // ShopToken 情報の取得
-         var shopToken = ApiHelpers.GetShopToken(_dbContext, shopCode);
+         var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode);
          // リクエストオブジェクトの作成
          var requestMessage = SetHttpRequest(resultLimit, startIndex, outputFields, searchCondition, shopToken, shopCode);
          // PollyContext を生成
@@ -170,7 +171,8 @@ namespace ssAppServices.Api.Yahoo
             e =>
             {
                var fieldType = YahooOrderListFieldDefinitions.FieldDefinitions.GetValueOrDefault(e.Name.LocalName);
-               return fieldType != null ? Convert.ChangeType(e.Value, fieldType) : e.Value;
+               return Reflection.CreateInstance(fieldType, e.Value);
+               //return fieldType != null ? Convert.ChangeType(e.Value, fieldType) : e.Value;
             }
          );
       }

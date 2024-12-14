@@ -31,7 +31,7 @@ namespace ssAppServices.Api.Yahoo
 
       public string GetValidAccessToken(YahooShop shopCode)
       {
-         var shopToken = ApiHelpers.GetShopToken(_dbContext, shopCode);
+         var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode);
 
          if (shopToken.RtexpiresAt <= DateTime.Now.AddMinutes(BufferMinutes))
          {
@@ -74,7 +74,7 @@ namespace ssAppServices.Api.Yahoo
       {
          var authHeader = shopToken.AppType == "server"
                ? Convert.ToBase64String(Encoding.UTF8.GetBytes($"{shopToken.ClientId}:{shopToken.Secret}"))
-               : shopToken.ClientId;
+               : Convert.ToBase64String(Encoding.UTF8.GetBytes(shopToken.ClientId));
 
          var request = new HttpRequestMessage(HttpMethod.Post, _tokenEndpoint)
          {

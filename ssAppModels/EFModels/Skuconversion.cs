@@ -68,8 +68,4 @@ public partial class Skuconversion
     [ForeignKey("ShopCode")]
     [InverseProperty("Skuconversions")]
     public virtual Shop ShopCodeNavigation { get; set; }
-
-    [ForeignKey("Skucode")]
-    [InverseProperty("Skuconversions")]
-    public virtual ProductSku SkucodeNavigation { get; set; }
 }

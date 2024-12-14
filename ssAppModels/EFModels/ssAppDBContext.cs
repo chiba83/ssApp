@@ -50,10 +50,10 @@ public partial class ssAppDBContext : DbContext
                 .HasComment("配送マスタの一意の配送コード");
             entity.Property(e => e.DeliveryFee).HasComment("配送料");
             entity.Property(e => e.LastOrderDate).HasComment("分割注文の最新注文日時");
-            entity.Property(e => e.OrderCode).HasComment("注文の一意コード（各モールの注文ID）");
             entity.Property(e => e.OrderDate).HasComment("注文日時（楽天は注文確定日時）");
-            entity.Property(e => e.OrderDetailCode).HasComment("注文明細の一意コード");
             entity.Property(e => e.OrderDetailTotal).HasComment("注文明細合計（税込）=オリジナル価格-クーポン値引き");
+            entity.Property(e => e.OrderId).HasComment("注文の一意コード（各モールの注文ID）");
+            entity.Property(e => e.OrderLineId).HasComment("注文明細行番号");
             entity.Property(e => e.OrderQty).HasComment("注文数量（3桁：999）");
             entity.Property(e => e.OriginalPrice).HasComment("オリジナル価格（税込）");
             entity.Property(e => e.PackingCont1).HasComment("梱包内容1（配送ラベルへの記載用メモ）");
@@ -366,12 +366,6 @@ public partial class ssAppDBContext : DbContext
                 .HasForeignKey(d => d.ShopCode)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SKUConversion_ShopCode");
-
-            entity.HasOne(d => d.SkucodeNavigation).WithMany(p => p.Skuconversions)
-                .HasPrincipalKey(p => p.Skucode)
-                .HasForeignKey(d => d.Skucode)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_SKUConversion_SKUCode");
         });
 
         OnModelCreatingPartial(modelBuilder);

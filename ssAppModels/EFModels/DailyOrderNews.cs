@@ -8,9 +8,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ssAppModels.EFModels;
 
-[Keyless]
 public partial class DailyOrderNews
 {
+    [Key]
+    [Column("ID")]
+    public long Id { get; set; }
+
     /// <summary>
     /// 分割注文の最新注文日時
     /// </summary>
@@ -87,7 +90,7 @@ public partial class DailyOrderNews
     [Required]
     [StringLength(35)]
     [Unicode(false)]
-    public string OrderCode { get; set; }
+    public string OrderId { get; set; }
 
     /// <summary>
     /// 注文日時（楽天は注文確定日時）
@@ -96,12 +99,9 @@ public partial class DailyOrderNews
     public DateTime OrderDate { get; set; }
 
     /// <summary>
-    /// 注文明細の一意コード
+    /// 注文明細行番号
     /// </summary>
-    [Required]
-    [StringLength(39)]
-    [Unicode(false)]
-    public string OrderDetailCode { get; set; }
+    public int OrderLineId { get; set; }
 
     /// <summary>
     /// SKUの一意コード
@@ -121,7 +121,6 @@ public partial class DailyOrderNews
     /// <summary>
     /// 配送マスタの一意の配送コード
     /// </summary>
-    [Required]
     [StringLength(3)]
     [Unicode(false)]
     public string DeliveryCode { get; set; }
@@ -129,7 +128,7 @@ public partial class DailyOrderNews
     /// <summary>
     /// 配送料
     /// </summary>
-    public int DeliveryFee { get; set; }
+    public int? DeliveryFee { get; set; }
 
     /// <summary>
     /// 注文商品コードをカンマ区切りで列挙。ソート用。商品毎にピッキングを行わせ効率を上げる
@@ -141,7 +140,6 @@ public partial class DailyOrderNews
     /// <summary>
     /// 梱包内容1（配送ラベルへの記載用メモ）
     /// </summary>
-    [Required]
     [StringLength(50)]
     public string PackingCont1 { get; set; }
 
@@ -166,7 +164,6 @@ public partial class DailyOrderNews
     /// <summary>
     /// 出荷の一意コード（yymmdd-xxx-999：出荷日-配送コード-連番）
     /// </summary>
-    [Required]
     [StringLength(14)]
     [Unicode(false)]
     public string ShipmentCode { get; set; }
@@ -175,7 +172,7 @@ public partial class DailyOrderNews
     /// 出荷日
     /// </summary>
     [Column(TypeName = "datetime")]
-    public DateTime ShipmentDate { get; set; }
+    public DateTime? ShipmentDate { get; set; }
 
     /// <summary>
     /// 追跡用の伝票番号（追跡番号は各社12桁）
