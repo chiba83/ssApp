@@ -37,7 +37,11 @@ namespace ssAppServices.Apps
 
          // マッピング処理 - DailyOrderNewsYahoo -> DailyOrderNews
          var yahooSellerIds = ssAppDBHelper.GetShopTokenSeller(_dbContext, Mall.Yahoo);
-         var dailyOrderNews = DailyOrderNewsMapper.YahooToDailyOrderNews(dailyOrderNewsYahoo, yahooSellerIds);
+         var dailyOrderNews = DailyOrderNewsMapper.YahooToDailyOrderNews(
+            dailyOrderNewsYahoo, yahooSellerIds, 
+            _dbContext.Skuconversions
+               .Where(x => x.ShopCode.StartsWith(Mall.Yahoo.ToString()))
+               .ToList());
 
          // DailyOrderNews更新処理
          UpdateDailyOrderNews(dailyOrderNews);
@@ -49,7 +53,8 @@ namespace ssAppServices.Apps
       private void UpdateDailyOrderNews(List<DailyOrderNews> dailyOrderNews)
       {
          // DailyOrderNewsのデータを削除。DailyOrderNews.ShopCodeの先頭文字列が"Yahoo"を削除
-         var targetOrderNews = _dbContext.DailyOrderNews.Where(x => x.ShopCode.StartsWith("Yahoo")).ToList();
+         var targetOrderNews = _dbContext.DailyOrderNews
+            .Where(x => x.ShopCode.StartsWith(Mall.Yahoo.ToString())).ToList();
          if (targetOrderNews.Any())
          {
             _dbContext.DailyOrderNews.RemoveRange(targetOrderNews);

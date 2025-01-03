@@ -94,7 +94,7 @@ namespace ssAppServices.Api.Yahoo
          var response = _requestHandler.SendAsync(request, pollyContext).Result;
 
          if (!response.IsSuccessStatusCode)
-               throw new Exception($"トークン取得リクエストに失敗しました。HTTPステータスコード: {response.StatusCode}。レスポンス内容: {response.Content.ReadAsStringAsync().Result}");
+            throw new Exception($"トークン取得リクエストに失敗しました。HTTPステータスコード: {response.StatusCode}。レスポンス内容: {response.Content.ReadAsStringAsync().Result}");
 
          var tokenData = JObject.Parse(response.Content.ReadAsStringAsync().Result);
          string accessToken = tokenData["access_token"]?.ToString()
@@ -102,7 +102,7 @@ namespace ssAppServices.Api.Yahoo
          string? refreshToken = isRefresh ? null : tokenData["refresh_token"]?.ToString();
 
          if (!isRefresh && string.IsNullOrEmpty(refreshToken))
-               throw new Exception("レスポンスにリフレッシュトークンが含まれていません。");
+            throw new Exception("レスポンスにリフレッシュトークンが含まれていません。");
 
          int expiresIn = tokenData["expires_in"]?.ToObject<int>() ?? 3600;
 

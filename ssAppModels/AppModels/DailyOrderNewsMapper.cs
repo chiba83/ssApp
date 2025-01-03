@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ssAppModels.AppModels
@@ -87,7 +88,10 @@ namespace ssAppModels.AppModels
 
       // マッピング処理（ I/F Model -> DB ）
       // DailyOrderNewsYahoo -> DailyOrderNews
-      public static List<DailyOrderNews> YahooToDailyOrderNews(List<DailyOrderNewsYahoo> source, Dictionary<string, String> sellerIds)
+      public static List<DailyOrderNews> YahooToDailyOrderNews(
+         List<DailyOrderNewsYahoo> source, 
+         Dictionary<string, String> sellerIds, 
+         List<Skuconversion> skuConversion)
       {
          if (source == null || !source.Any()) throw new ArgumentNullException(nameof(source));
 
@@ -125,12 +129,13 @@ namespace ssAppModels.AppModels
                OrderId = item.OrderId,                            // 注文ID
                OrderDate = item.OrderTime,                        // 注文日時
                OrderLineId = item.LineId,                         // 注文行番号
-               Skucode = item.ItemId + item.SubCode,              // SKUコード
+               Skucode = GetSKUCode(item, 
+                  sellerIds[item.SellerId], skuConversion),       // SKUコード
                OrderQty = item.Quantity,                          // 数量
                ConsumptionTaxRate = item.ItemTaxRatio / 100m,     // 消費税率（intからdecimalへ変換）
                OriginalPrice = item.UnitPrice,                    // オリジナル価格
                CouponDiscount = item.CouponDiscount,              // クーポン値引き
-               OrderDetailTotal = item.UnitPrice * item.Quantity 
+               OrderDetailTotal = item.UnitPrice * item.Quantity
                   - item.CouponDiscount,                          // 注文明細合計
             };
             // キーに基づいてLastOrderDateをセット（最新注文日時）
@@ -151,6 +156,27 @@ namespace ssAppModels.AppModels
          }
 
          return result;
+      }
+
+      private static string GetSKUCode(DailyOrderNewsYahoo item, string shopCode, List<Skuconversion> skuConversion)
+      {
+         //var orderId = item.ItemId + item.SubCode;
+         var convertSKU = skuConversion
+            .Where(x => x.ShopCode == shopCode 
+               && x.ProductCode == item.ItemId 
+               && x.ShopSkucode == item.SubCode)
+            .Select(x => x.ProductCode + x.Skucode).FirstOrDefault();
+         
+         var sku = convertSKU ?? item.ItemId + item.SubCode;
+
+         // Yahoo-Yours SKUコンバート
+         if (shopCode != YahooShop.Yahoo_LARAL.ToString())
+            return Regex.Replace(sku, @"(\w{6,})\1", "$1");
+
+         // Yahoo-LARAL SKUコンバート
+         sku = Regex.Replace(sku, @"(\w{8,})\1", "$1");
+         var size = Regex.Match(item.ItemOption, @"(\d+)(?=cm)");
+         return size.Success ? $"{sku}-{size.Value}" : sku;
       }
 
       // Class のプロパティを設定する（動的Property対応）
