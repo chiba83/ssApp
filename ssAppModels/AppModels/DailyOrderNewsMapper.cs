@@ -93,7 +93,7 @@ namespace ssAppModels.AppModels
          Dictionary<string, String> sellerIds, 
          List<Skuconversion> skuConversion)
       {
-         if (source == null || !source.Any()) throw new ArgumentNullException(nameof(source));
+         if (source == null || !source.Any()) return new List<DailyOrderNews>();
 
          // 最新のOrderTimeをキーグループ化して取得
          var latestOrderDates = source

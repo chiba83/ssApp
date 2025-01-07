@@ -78,7 +78,7 @@ namespace ssAppServices.Api.Yahoo
          Guard.AgainstNull(orderIds, nameof(orderIds));
          ApiHelpers.AreAllFieldsValid(outputFields, YahooOrderInfoFieldDefinitions.GetAllFields());
          // ShopToken 情報の取得
-         var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode);
+         var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode.ToString());
 
          // リクエストオブジェクトの作成
          var yahooOrderInfoResponses = new List<YahooOrderInfoResponse>();

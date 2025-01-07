@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Api\Rakuten\" />
     <Folder Include="Config\" />
   </ItemGroup>
 

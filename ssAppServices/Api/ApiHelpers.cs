@@ -8,6 +8,8 @@ using System.Xml;
 using ssAppModels.ApiModels;
 using ssAppModels.EFModels;
 using ssAppCommon.Extensions;
+using Azure.Core;
+using Newtonsoft.Json;
 
 namespace ssAppServices.Api
 {
@@ -22,7 +24,7 @@ namespace ssAppServices.Api
       }
 
       /// <summary>
-      /// 公開キーをHTTPリクエスト仕様に暗号化
+      /// Yahoo 公開キーをHTTPリクエスト仕様に暗号化
       /// </summary>
       public static (string? key, string? version) GetPublicKey(ShopToken shopToken)
       {
@@ -78,7 +80,7 @@ namespace ssAppServices.Api
       }
 
       /// <summary>
-      /// HTTPリクエストヘッダーを設定
+      /// Yahoo HTTPリクエストヘッダーを設定
       /// </summary>
       public static HttpRequestMessage SetRequestHeaders(HttpRequestMessage requestMessage,string accessToken, string? encodedPublicKey, string? KeyVersion)
       {
@@ -94,6 +96,32 @@ namespace ssAppServices.Api
          requestMessage.Headers.Add("X-sws-signature", encodedPublicKey); // 暗号化された認証情報を追加
          requestMessage.Headers.Add("X-sws-signature-version", KeyVersion); // Keyバージョン
          return requestMessage;
+      }
+
+      /// <summary>
+      /// Rakuten HTTPリクエストヘッダーを設定
+      /// </summary>
+      public static HttpRequestMessage SetRakutenRequest(string apiEndpoint, object requestParameter, ShopToken shopToken)
+      {
+         Guard.AgainstNullOrWhiteSpace(apiEndpoint, nameof(apiEndpoint));
+         Guard.AgainstNull(requestParameter, nameof(requestParameter));
+         Guard.AgainstNull(shopToken, nameof(shopToken));
+
+         var request = new HttpRequestMessage(HttpMethod.Post, apiEndpoint);
+
+         // リクエストヘッダーを設定
+         string credentials = $"{shopToken.Secret}:{shopToken.ClientId}";
+         string base64Credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
+         request.Headers.Add("Authorization", $"ESA {base64Credentials}");
+
+         // リクエストパラメータを設定
+         var jsonContent = JsonConvert.SerializeObject(requestParameter, new JsonSerializerSettings
+         {
+            NullValueHandling = NullValueHandling.Ignore
+         });
+         request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+         return request;
       }
 
       /// <summary>

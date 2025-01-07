@@ -32,26 +32,32 @@ namespace ssAppServices.Api
    }
 
    public class RakutenSettings
-    {
-        public RakutenApiEndpoints ApiEndpoints { get; set; }
-    }
+   {
+      public RakutenEndpoints Endpoints { get; set; }
+   }
 
-    public class RakutenApiEndpoints
-    {
-        public OrderEndpoints Order { get; set; }
-        public InventoryEndpoints Inventory { get; set; }
-        public CouponEndpoints Coupon { get; set; }
-    }
+   public class RakutenEndpoints
+   {
+      public RakutenOrderEndpoints Order { get; set; }
+      public RakutenInventoryEndpoints Inventory { get; set; }
+      public RakutenCouponEndpoints Coupon { get; set; }
+   }
 
-    public class InventoryEndpoints
-    {
-        public string GetInventory { get; set; }
-        public string UpdateInventory { get; set; }
-    }
+   public class RakutenOrderEndpoints
+   {
+      public string SearchOrder { get; set; }
+      public string GetOrder { get; set; }
+   }
 
-    public class CouponEndpoints
-    {
-        public string GetCouponList { get; set; }
-        public string CreateCoupon { get; set; }
-    }
+   public class RakutenInventoryEndpoints
+   {
+      public string GetInventory { get; set; }
+      public string UpdateInventory { get; set; }
+   }
+
+   public class RakutenCouponEndpoints
+   {
+      public string GetCouponList { get; set; }
+      public string CreateCoupon { get; set; }
+   }
 }

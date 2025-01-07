@@ -31,7 +31,7 @@ namespace ssAppServices.Api.Yahoo
 
       public string GetValidAccessToken(YahooShop shopCode)
       {
-         var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode);
+         var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode.ToString());
 
          if (shopToken.RtexpiresAt <= DateTime.Now.AddMinutes(BufferMinutes))
          {

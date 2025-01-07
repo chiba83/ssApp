@@ -8,6 +8,7 @@ using ssAppServices.Api;
 using ssAppServices.Api.Yahoo;
 using Microsoft.Extensions.Configuration;
 using ssAppServices.Apps;
+using ssAppServices.Api.Rakuten;
 
 namespace ssAppServices.Extensions
 {
@@ -44,6 +45,10 @@ namespace ssAppServices.Extensions
          services.AddScoped<YahooOrderList>();
          // Yahoo注文詳細サービス
          services.AddScoped<YahooOrderInfo>();
+         // Rakuten注文情報検索サービス
+         services.AddScoped<RakutenSearchOrder>();
+         // Rakuten注文詳細ービス
+         services.AddScoped<RakutenGetOrder>();
          // DailyOrderNews更新サービス
          services.AddScoped<SetDailyOrderNews>();
 

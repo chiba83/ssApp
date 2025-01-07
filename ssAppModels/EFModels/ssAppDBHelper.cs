@@ -12,10 +12,10 @@ namespace ssAppModels.EFModels
       /// <summary>
       /// 指定されたShopCodeに対応するShopTokenを取得
       /// </summary>
-      public static ShopToken GetShopToken(ssAppDBContext dbContext, YahooShop shopCode)
+      public static ShopToken GetShopToken(ssAppDBContext dbContext, string shopCode)
       {
-         return dbContext.ShopTokens.FirstOrDefault(st => st.ShopCode == shopCode.ToString())
-             ?? throw new Exception($"指定されたShopCode（{shopCode.ToString()}）に対応するShopTokenが見つかりません。");
+         return dbContext.ShopTokens.FirstOrDefault(st => st.ShopCode == shopCode)
+             ?? throw new Exception($"指定されたShopCode（{shopCode}）に対応するShopTokenが見つかりません。");
       }
 
       /// <summary>

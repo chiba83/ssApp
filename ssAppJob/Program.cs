@@ -2,7 +2,6 @@ using Hangfire;
 using Hangfire.SqlServer;
 using ssAppServices.Apps;
 using ssAppServices.Extensions;
-using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,7 +41,8 @@ try
          UseRecommendedIsolationLevel = true,
          DisableGlobalLocks = true
       })
-      .WithJobExpirationTimeout(TimeSpan.FromDays(3))); // Succeeded JobsÇ3ì˙ä‘ï€éù
+      .WithJobExpirationTimeout(TimeSpan.FromDays(1))
+   );
 
 
    builder.Services.AddProjectDependencies(builder.Configuration);
