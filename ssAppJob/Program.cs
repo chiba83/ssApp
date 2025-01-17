@@ -1,28 +1,34 @@
 using Hangfire;
 using Hangfire.SqlServer;
+using Hangfire.Common;
 using ssAppServices.Apps;
 using ssAppServices.Extensions;
+using ssAppModels.ApiModels;
+using Hangfire.Server;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ログ出力の共通メソッド
+void Log(string message)
+{
+   var logPath = "C:\\inetpub\\logs\\hangfire\\hangfire_log.txt";
+   File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}\n");
+}
 
 // Load configuration from ssAppService
 try
 {
    var basePath = AppContext.BaseDirectory;
-   var logPath = "C:\\temp\\debug_log.txt";
-
-   // Log base directory for debugging
-   File.AppendAllText(logPath, $"Base Directory: {basePath}\n");
 
    builder.Configuration
        .SetBasePath(basePath)
        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-   File.AppendAllText(logPath, "Configuration loaded successfully.\n");
+   Log("Configuration loaded successfully.");
 }
 catch (Exception ex)
 {
-   File.AppendAllText("C:\\temp\\debug_log.txt", $"Error loading configuration: {ex.Message}\n");
+   Log($"Error loading configuration: {ex.Message}");
    throw;
 }
 
@@ -30,29 +36,28 @@ catch (Exception ex)
 try
 {
    builder.Services.AddHangfire(config => config
-      .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
-      .UseSimpleAssemblyNameTypeSerializer()
-      .UseRecommendedSerializerSettings()
-      .UseSqlServerStorage(builder.Configuration.GetConnectionString("ssAppDBContext"), new SqlServerStorageOptions
-      {
-         CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-         SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-         QueuePollInterval = TimeSpan.Zero,
-         UseRecommendedIsolationLevel = true,
-         DisableGlobalLocks = true
-      })
-      .WithJobExpirationTimeout(TimeSpan.FromDays(1))
+       .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+       .UseSimpleAssemblyNameTypeSerializer()
+       .UseRecommendedSerializerSettings()
+       .UseSqlServerStorage(builder.Configuration.GetConnectionString("ssAppDBContext"), new SqlServerStorageOptions
+       {
+          CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+          SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+          QueuePollInterval = TimeSpan.Zero,
+          UseRecommendedIsolationLevel = true,
+          DisableGlobalLocks = true
+       })
+       .WithJobExpirationTimeout(TimeSpan.FromDays(1))
    );
-
 
    builder.Services.AddProjectDependencies(builder.Configuration);
    builder.Services.AddHangfireServer();
 
-   File.AppendAllText("C:\\temp\\debug_log.txt", "Services configured successfully.\n");
+   Log("Services configured successfully.");
 }
 catch (Exception ex)
 {
-   File.AppendAllText("C:\\temp\\debug_log.txt", $"Error configuring services: {ex.Message}\n");
+   Log($"Error configuring services: {ex.Message}");
    throw;
 }
 
@@ -70,22 +75,33 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
    Authorization = new[] { new AllowAllAuthorizationFilter() }
 });
 
+// Add event for job performance logging
+GlobalJobFilters.Filters.Add(new LogJobFilter(Log));
+
 try
 {
-   // Add the recurring job
+   // Add the recurring jobs
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
-       "daily-order-news-workflow",
-       x => x.RunDailyOrderNewsWorkflow(),
-       "0,30 * * * *" // 毎時 0分と30分
+       "DailyOrderNews - Yahoo_LARAL",
+       x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL),
+       "0,30 0-8,11-23 * * *" // 0分と30分で実行。ただし9時～10はスキップ
+   );
+   RecurringJob.AddOrUpdate<SetDailyOrderNews>(
+       "DailyOrderNews - Yahoo_Yours",
+       x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours),
+       "0,30 0-8,11-23 * * *" // 0分と30分で実行。ただし9時～10はスキップ
+   );
+   RecurringJob.AddOrUpdate<SetDailyOrderNews>(
+       "DailyOrderNews - Rakuten_ENZO",
+       x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO),
+       "0,30 0-8,11-23 * * *" // 0分と30分で実行。ただし9時～10はスキップ
    );
 
-   BackgroundJob.Enqueue<SetDailyOrderNews>(x => x.RunDailyOrderNewsWorkflow()); // Immediate execution
-
-   File.AppendAllText("C:\\temp\\debug_log.txt", "Jobs configured successfully.\n");
+   Log("Jobs configured successfully.");
 }
 catch (Exception ex)
 {
-   File.AppendAllText("C:\\temp\\debug_log.txt", $"Error configuring jobs: {ex.Message}\n");
+   Log($"Error configuring jobs: {ex.Message}");
    throw;
 }
 
@@ -97,6 +113,39 @@ app.MapGet("/", async context =>
 });
 
 app.Run();
+
+// Filter for logging job performance
+public class LogJobFilter : JobFilterAttribute, IServerFilter
+{
+   private readonly Action<string> _log;
+
+   public LogJobFilter(Action<string> log)
+   {
+      _log = log;
+   }
+
+   public void OnPerforming(PerformingContext context)
+   {
+      var jobId = context.BackgroundJob.Id;
+      var jobName = context.BackgroundJob.Job.Method.Name;
+      _log($"Starting job ID: {jobId}, Name: {jobName}");
+   }
+
+   public void OnPerformed(PerformedContext context)
+   {
+      var jobId = context.BackgroundJob.Id;
+      var jobName = context.BackgroundJob.Job.Method.Name;
+
+      if (context.Exception == null)
+      {
+         _log($"Completed job ID: {jobId}, Name: {jobName}, Status: Succeeded");
+      }
+      else
+      {
+         _log($"Completed job ID: {jobId}, Name: {jobName}, Status: Failed, Exception: {context.Exception.Message}");
+      }
+   }
+}
 
 public class AllowAllAuthorizationFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter
 {

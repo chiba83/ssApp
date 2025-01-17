@@ -8,6 +8,8 @@ using ssAppModels.EFModels;
 /**************************************************************/
 // 仕様
 // https://webservice.rms.rakuten.co.jp/merchant-portal/view/ja/common/1-1_service_index/rakutenpayorderapi/getorder
+// ●重要なAPI仕様
+// 1リクエストで最大 100 件の注文情報を取得します。
 
 namespace ssAppServices.Api.Rakuten
 {
@@ -27,8 +29,9 @@ namespace ssAppServices.Api.Rakuten
          _apiEndpoint = mallSettings.Value.Rakuten.Endpoints.Order.GetOrder
             ?? throw new ArgumentNullException(nameof(mallSettings), "Rakuten API GetOrderエンドポイントが設定されていません。");
       }
+
       /// <summary>
-      /// Rakuten注文情報APIを呼び出し、必要なデータのみ返す（本番用）
+      /// RakutenGetOrder APIから必要なデータのみ返す（本番用）
       /// </summary>
       public RakutenGetOrderResponse GetOrder(
          RakutenGetOrderRequest requestParameter, RakutenShop rakutenShop)
@@ -39,13 +42,11 @@ namespace ssAppServices.Api.Rakuten
       }
 
       /// <summary>
-      /// Rakuten注文情報APIを呼び出し、HTTPレスポンスも返す（テスト用）
+      /// RakutenGetOrder APIから必要なデータのみ返す（テスト用）
       /// </summary>
       public (HttpResponseMessage, RakutenGetOrderResponse) GetOrderWithResponse(
          RakutenGetOrderRequest requestParameter, RakutenShop rakutenShop)
       {
-         // リクエストパラメータのバリデーション
-         //requestParameter = ValidateRequestParameters(requestParameter);
          // ShopToken 情報の取得
          var shopToken = ssAppDBHelper.GetShopToken(_dbContext, rakutenShop.ToString());
          // リクエストオブジェクトの作成
@@ -65,7 +66,7 @@ namespace ssAppServices.Api.Rakuten
          return (response, parsedData);
       }
 
-      // レスポンスボディのデシリアライズ
+      // RakutenGetOrder レスポンスボディのデシリアライズ
       public RakutenGetOrderResponse ParseResponse(string responseBody)
       {
          try

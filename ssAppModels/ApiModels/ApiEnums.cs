@@ -16,9 +16,8 @@ namespace ssAppModels.ApiModels
    {
       Rakuten_ENZO
    }
-   public enum AllShop
+   public enum MallShop
    {
-      All,
       Yahoo_LARAL,
       Yahoo_Yours,
       Rakuten_ENZO

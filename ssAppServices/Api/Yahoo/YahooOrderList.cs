@@ -1,10 +1,9 @@
-﻿using System.Text;
+﻿#pragma warning disable CS8602, CS8620
+using System.Text;
 using System.Xml.Linq;
 using Microsoft.Extensions.Options;
 using ssAppModels.EFModels;
 using ssAppModels.ApiModels;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
 using ssAppCommon.Extensions;
 
 /**************************************************************/
@@ -50,17 +49,50 @@ namespace ssAppServices.Api.Yahoo
       }
 
       /// <summary>
+      /// YahooOrderList API ページング処理（全ページデータ取得）
+      /// ページング処理制約事項：出力フィールドは、"OrderID" のみ
+      /// </summary>
+      public (int, List<string>) RunGetOrderSearch(
+         YahooOrderListRequest yahooOrderListRequest, YahooShop shopCode)
+      {
+         // 出力フィールドを "OrderID" に制限
+         yahooOrderListRequest.Req.Search.Field = "OrderId";
+
+         // 初回リクエスト
+         var response = GetOrderSearch(yahooOrderListRequest, shopCode);
+         var totalCount = response.Search.TotalCount;
+         if (totalCount == 0)
+            return (totalCount, new List<string>());
+
+         // OrderIDを蓄積
+         var OrderIds = new List<string>(response.Search.OrderInfo
+            .Select(x => x.Fields["OrderId"].ToString()));
+
+         // ページング処理
+         var totalPages = totalCount / 2000 + 1;
+         for (int currentPage = 2; currentPage <= totalPages; currentPage++)
+         {
+            // リクエストページ（スタートデータ位置）を更新
+            yahooOrderListRequest.Req.Search.Start = (currentPage - 1) * 2000 + 1;
+
+            // 次のページのレスポンスを取得
+            var nextPageResponse = GetOrderSearch(yahooOrderListRequest, shopCode);
+            if (nextPageResponse?.Search.OrderInfo != null)
+               OrderIds.AddRange(nextPageResponse.Search.OrderInfo
+                  .Select(x => x.Fields["OrderId"].ToString()));
+         }
+         return (totalCount, OrderIds);
+      }
+
+
+      /// <summary>
       /// Yahoo注文検索APIを呼び出し、必要なデータのみ返す（本番用）
       /// </summary>
       public YahooOrderListResult GetOrderSearch(
-         YahooOrderListCondition searchCondition,
-         List<string> outputFields,
-         YahooShop shopCode,
-         int? resultLimit = null,
-         int? startIndex = null)
+         YahooOrderListRequest yahooOrderListRequest, YahooShop shopCode)
       {
          // HTTPレスポンスを無視し、パース結果のみ返す
-         var (_, parsedData) = GetOrderSearchWithResponse(searchCondition, outputFields, shopCode, resultLimit, startIndex);
+         var (_, parsedData) = GetOrderSearchWithResponse(yahooOrderListRequest, shopCode);
          return parsedData;
       }
 
@@ -68,18 +100,15 @@ namespace ssAppServices.Api.Yahoo
       /// Yahoo注文検索APIを呼び出し、HTTPレスポンスも返す（テスト用）
       /// </summary>
       public (HttpResponseMessage, YahooOrderListResult) GetOrderSearchWithResponse(
-         YahooOrderListCondition searchCondition,
-         List<string> outputFields,
-         YahooShop shopCode,
-         int? resultLimit = null,
-         int? startIndex = null)
+         YahooOrderListRequest yahooOrderListRequest, YahooShop shopCode)
       {
+         var outputFields = yahooOrderListRequest.Req.Search.Field.Split(',').ToList();
          // Validation Check
          ApiHelpers.AreAllFieldsValid(outputFields, YahooOrderListFieldDefinitions.FieldDefinitions);
          // ShopToken 情報の取得
          var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode.ToString());
          // リクエストオブジェクトの作成
-         var requestMessage = SetHttpRequest(resultLimit, startIndex, outputFields, searchCondition, shopToken, shopCode);
+         var requestMessage = SetHttpRequest(yahooOrderListRequest, shopToken, shopCode);
          // PollyContext を生成
          var pollyContext = ApiHelpers.CreatePollyContext("Yahoo", requestMessage, shopToken.SellerId);
          // HTTPリクエストを送信
@@ -97,22 +126,10 @@ namespace ssAppServices.Api.Yahoo
       }
 
       // HTTPリクエストの作成
-      private HttpRequestMessage SetHttpRequest(int? resultLimit, int? startIndex, List<string> outputFields, YahooOrderListCondition searchCondition, ShopToken shopToken, YahooShop shopCode)
+      private HttpRequestMessage SetHttpRequest(YahooOrderListRequest yahooOrderListRequest, ShopToken shopToken, YahooShop shopCode)
       {
-         // リクエストオブジェクトの作成
-         var requestBody = new YahooOrderListRequestBody
-         {
-            Search = new YahooOrderListCriteria
-            {
-               Result = resultLimit ?? 2000,
-               Start = startIndex ?? 1,
-               Condition = searchCondition,
-               Field = string.Join(",", outputFields)
-            },
-            SellerId = shopToken.SellerId
-         };
          // XMLリクエストボディの作成
-         var xmlBody = ApiHelpers.SerializeToXml(requestBody, "Req");
+         var xmlBody = ApiHelpers.SerializeToXml(yahooOrderListRequest.Req, "Req");
          // HTTPリクエストの作成
          var requestMessage = new HttpRequestMessage(HttpMethod.Post, _apiEndpoint)
          {
@@ -172,7 +189,6 @@ namespace ssAppServices.Api.Yahoo
             {
                var fieldType = YahooOrderListFieldDefinitions.FieldDefinitions.GetValueOrDefault(e.Name.LocalName);
                return Reflection.CreateInstance(fieldType, e.Value);
-               //return fieldType != null ? Convert.ChangeType(e.Value, fieldType) : e.Value;
             }
          );
       }

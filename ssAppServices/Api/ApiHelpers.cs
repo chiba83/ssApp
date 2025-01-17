@@ -1,14 +1,10 @@
-﻿using System;
-using System.Linq;
-using Polly;
+﻿using Polly;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Serialization;
 using System.Xml;
-using ssAppModels.ApiModels;
 using ssAppModels.EFModels;
 using ssAppCommon.Extensions;
-using Azure.Core;
 using Newtonsoft.Json;
 
 namespace ssAppServices.Api
@@ -99,7 +95,7 @@ namespace ssAppServices.Api
       }
 
       /// <summary>
-      /// Rakuten HTTPリクエストヘッダーを設定
+      /// Rakuten HTTPリクエストを設定
       /// </summary>
       public static HttpRequestMessage SetRakutenRequest(string apiEndpoint, object requestParameter, ShopToken shopToken)
       {

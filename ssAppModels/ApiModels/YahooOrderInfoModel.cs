@@ -288,7 +288,7 @@ namespace ssAppModels.ApiModels
 
           // 価格および数量関連
           { "AffiliateRatio", typeof(string) }, // アフィリエイト料率
-          { "UnitPrice", typeof(int) }, // 商品単価
+          { "UnitPrice", typeof(int) }, // 値引き後の商品単価
           { "NonTaxUnitPrice", typeof(int) }, // 商品税抜単価
           { "Quantity", typeof(int) }, // 数量
           { "PointAvailQuantity", typeof(int) }, // ポイント対象数量

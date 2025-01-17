@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿#pragma warning disable CS8602, CS8604, CS8620
+using Microsoft.Extensions.DependencyInjection;
 using ssAppModels.ApiModels;
 using ssAppModels.AppModels;
 using ssAppModels.EFModels;
@@ -44,28 +45,21 @@ namespace ssAppTests.ssAppServices.Apps
          {
             Console.WriteLine($"● 検査ショップ： {shop.ToString()}");
             Console.WriteLine("--------------------------------------------------");
+
             var (httpOrderList, orderList) = Run_YahooOrderSearch(shop);
-            var (httpResponses, orderInfo) = _setDailyOrderNews.GetYahooOrderInfoWithResponse(orderList, shop);
+            var orderIds = orderList.Search.OrderInfo.Select(x => x.Fields["OrderId"].ToString()).ToList();
+            if (orderIds == null  || orderIds.Count == 0)
+            {
+               Console.WriteLine("注文情報がありません。");
+               Console.WriteLine("--------------------------------------------------");
+               continue;
+            }
+
+            var (httpResponses, orderInfo) = _setDailyOrderNews.GetYahooOrderInfoWithResponse(orderIds, shop);
 
             // orderListのデータ件数とhttpOrderListの件数が一致すること。Response件数はGetOrderListTotalで取得
             var rowNumber = YahooApiHelpers.GetOrderListTotal(httpOrderList);
-            Assert.That(orderList.Count, Is.EqualTo(rowNumber), "orderListのデータ件数とhttpResponsesの件数が一致しません。");
-
-            /******************************************************************************/
-            // DailyOrderNewsYahooSearchのフィールド値を全件チェック
-            // Yahoo注文情報のフィールド値を取得
-            var fieldDefinitions = YahooOrderListFieldDefinitions.FieldDefinitions;
-            var fields = DailyOrderNewsModelHelper.YahooOrderSearchFields();
-            int i = 0;
-            foreach (var rec in orderList)
-            {
-               i++;
-               foreach (var field in fields)
-               {
-                  var value = YahooApiHelpers.GetOrderListFieldValue(httpOrderList, i, field, fieldDefinitions);
-                  Assert.That(rec.GetType().GetProperty(field)?.GetValue(rec), Is.EqualTo(value), $"{field}の値が一致しません。");
-               }
-            }
+            Assert.That(orderIds.Count, Is.EqualTo(rowNumber), "orderListのデータ件数とhttpResponsesの件数が一致しません。");
 
             /******************************************************************************/
             // データ件数チェック
@@ -78,9 +72,9 @@ namespace ssAppTests.ssAppServices.Apps
             /******************************************************************************/
             // DailyOrderNewsのフィールド値を全件チェック
             // Yahoo注文情報のフィールド値を取得
-            fieldDefinitions = YahooOrderInfoFieldDefinitions.GetAllFields();
+            var fieldDefinitions = YahooOrderInfoFieldDefinitions.GetAllFields();
             var itemFieldList = YahooOrderInfoFieldDefinitions.Item.Keys.ToList();
-            fields = DailyOrderNewsModelHelper.GetYahooOrderInfoFields();
+            var fields = DailyOrderNewsModelHelper.GetYahooOrderInfoFields();
 
             foreach (var rec in orderInfo)
             {
@@ -114,25 +108,94 @@ namespace ssAppTests.ssAppServices.Apps
       }
 
       [Test]
-      public void T02_RunDailyOrderNewsWorkflow()
+      public void T02_FetchDailyOrderFromYahoo()
       {
-         var (DON, DONY) = _setDailyOrderNews.RunDailyOrderNewsWorkflow();
-         // DONのデータ件数とDONYの件数が一致すること
-         Assert.That(DON.Count, Is.EqualTo(DONY.Count), "DailyOrderNewsとDailyOrderNewsYahooのデータ件数が一致しません。");
-         // DONYのデータ件数とDailyOrderNews.ShopCodeが"Yahoo"で始まる件数が一致すること
-         var yahooCount = _dbContext.DailyOrderNews.Count(x => x.ShopCode.StartsWith("Yahoo"));
-         Assert.That(DONY.Count, Is.EqualTo(yahooCount), "DailyOrderNewsYahooのデータ件数とDailyOrderNews.ShopCodeが\"Yahoo\"で始まる件数が一致しません。");
+         foreach (YahooShop yahooShop in Enum.GetValues(typeof(YahooShop)))
+         {
+            Console.WriteLine($"● 検査ショップ： {yahooShop.ToString()}");
+            Console.WriteLine("--------------------------------------------------");
+            var (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop);
+            if (DON?.Any() == false || DONY?.Any() == false)
+            {
+               Console.WriteLine("注文情報がありません。");
+               Console.WriteLine("--------------------------------------------------");
+               continue;
+            }
+
+            // skuコンバートエラー
+            var skuCodes = _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString()).GroupBy(x => x.Skucode).Select(x => x.Key).ToList();
+            var skuCompare = _dbContext.Skuconversions.Where(x => x.ShopCode == yahooShop.ToString()).Select(x => x.ShopSkucode).ToList();
+            Assert.That(skuCodes, Has.None.Matches<string>(sku => skuCompare.Contains(sku)), "skuコンバートエラー");
+            Console.WriteLine("Sku-Conversions：Success");
+            Console.WriteLine("--------------------------------------------------");
+
+            Assert.That(DON.Count, Is.EqualTo(DONY.Count), "DailyOrderNewsとDailyOrderNewsYahooのデータ件数が一致しません。");
+            // DONYのデータ件数とDailyOrderNews.ShopCodeが"Yahoo"で始まる件数が一致すること
+            var yahooCount = _dbContext.DailyOrderNews.Count(x => x.ShopCode == yahooShop.ToString());
+            Assert.That(DONY.Count, Is.EqualTo(yahooCount), "DailyOrderNewsYahooのデータ件数とDailyOrderNews.ShopCodeの件数が一致しません。");
+
+            var orderIds = _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString())
+                  .GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
+
+            Console.WriteLine($"データ件数 Success： {orderIds.Count}");
+            Console.WriteLine("--------------------------------------------------");
+            int rowNumber = 1;
+            foreach (var r in _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString()))
+            {
+               Console.WriteLine($"Row {rowNumber++} : {r.OrderId}, {r.OrderLineId}, {r.Skucode}");
+               Console.WriteLine("--------------------------------------------------");
+            }
+         }
       }
 
-      private (HttpResponseMessage, List<DailyOrderNewsYahooSearch>) Run_YahooOrderSearch(YahooShop yahooShop)
+      [Test]
+      public void T03_FetchDailyOrderFromRakuten()
+      {
+         foreach (RakutenShop rakutenShop in Enum.GetValues(typeof(RakutenShop)))
+         {
+            Console.WriteLine($"● 検査ショップ： {rakutenShop.ToString()}");
+            Console.WriteLine("--------------------------------------------------");
+            var (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop);
+
+            // 注文情報が取得できない場合は処理を終了
+            if (orderNumbers.Count == 0)
+            {
+               Console.WriteLine("注文情報がありません。");
+               Console.WriteLine("--------------------------------------------------");
+               continue;
+            }
+
+            // skuコンバートエラー
+            var skuCodes = _dbContext.DailyOrderNews.Where(x => x.ShopCode == rakutenShop.ToString()).GroupBy(x => x.Skucode).Select(x => x.Key).ToList();
+            var skuCompare = _dbContext.Skuconversions.Where(x => x.ShopCode == rakutenShop.ToString()).Select(x => x.ShopSkucode).ToList();
+            Assert.That(skuCodes, Has.None.Matches<string>(sku => skuCompare.Contains(sku)), "skuコンバートエラー");
+            Console.WriteLine("Sku-Conversions：Success");
+            Console.WriteLine("--------------------------------------------------");
+
+            // DailyOrderNewsのデータ件数とDailyOrderNews.ShopCodeが"Rakuten"で始まる件数が一致すること
+            var orderIds = _dbContext.DailyOrderNews.Where(x => x.ShopCode == rakutenShop.ToString())
+                  .GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
+            Assert.That(orderNumbers.Count, Is.EqualTo(orderIds.Count), $"DailyOrderNews {rakutenShop.ToString()} のデータ件数とDailyOrderNews.ShopCodeの件数が一致しません。");
+            Assert.That(orderNumbers, Is.EquivalentTo(orderIds), "DailyOrderNewsのOrderNumberとSerchOrderで取得したOrderNumberが一致しない。");
+
+            Console.WriteLine($"データ件数 Success： {orderNumbers.Count}");
+            Console.WriteLine("--------------------------------------------------");
+            int rowNumber = 1;
+            foreach (var r in _dbContext.DailyOrderNews.Where(x => x.ShopCode == rakutenShop.ToString()))
+            {
+               Console.WriteLine($"Row {rowNumber++} : {r.OrderId.Split('-').Skip(2).DefaultIfEmpty("").Aggregate((a, b) => a + "-" + b)}, {r.OrderLineId}, {r.Skucode}");
+               Console.WriteLine("--------------------------------------------------");
+            }
+         }
+      }
+
+      private (HttpResponseMessage, YahooOrderListResult) Run_YahooOrderSearch(YahooShop yahooShop)
       {
          var (httpResponses, orderList) = _setDailyOrderNews.GetYahooOrderListWithResponse(yahooShop);
          int rowNumber = 1;
-         foreach (var order in orderList)
+         foreach (var orderId in orderList.Search.OrderInfo.Select(x => x.Fields["OrderId"].ToString()))
          {
-            var properties = order.GetType().GetProperties();
-            var values = properties.Select(p => $"{p.Name}: {p.GetValue(order)}");
-            Console.WriteLine($"Row {rowNumber}: {string.Join(", ", values)}");
+            Console.WriteLine($"Row {rowNumber} : {orderId}");
             Console.WriteLine("--------------------------------------------------");
             rowNumber++;
          }

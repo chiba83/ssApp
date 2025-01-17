@@ -4,9 +4,6 @@ using Microsoft.Extensions.Options;
 using ssAppModels.EFModels;
 using ssAppModels.ApiModels;
 using ssAppCommon.Extensions;
-using Microsoft.VisualBasic.FileIO;
-using Newtonsoft.Json.Linq;
-using Azure;
 
 /**************************************************************/
 /*                        YahooOrderInfo                      */

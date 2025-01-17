@@ -1,36 +1,70 @@
-﻿using ssAppModels.ApiModels;
+﻿#pragma warning disable  CS8620
+using Microsoft.EntityFrameworkCore;
+using ssAppModels.ApiModels;
 using ssAppModels.EFModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace ssAppModels.AppModels
 {
    public static class DailyOrderNewsMapper
    {
-      // マッピング処理（ HTTPResponseModel -> I/F Model ）
-      // Yahoo注文一覧（YahooOrderListResult） -> DailyOrderNewsYahooSearch
-      public static List<DailyOrderNewsYahooSearch> YahooOrderList(YahooOrderListResult result)
+      // マッピング処理（ HTTPResponseModel -> DB ）
+      // Rakuten注文明細 (RakutenGetOrderResponse) -> DailyOrderNews
+      public static List<DailyOrderNews> RakutenToDailyOrderNews(
+         RakutenGetOrderResponse rakutenGetOrderResponse,
+         RakutenShop rakutenShop,
+         DbSet<Skuconversion> skuConversion)
       {
-         if (result?.Search?.OrderInfo == null)
-            return new List<DailyOrderNewsYahooSearch>();
-         // 対象プロパティ名のキャッシュ
-         var validFields = DailyOrderNewsModelHelper.YahooOrderSearchFields();
+         if (rakutenGetOrderResponse.OrderModelList?.Any() != true)
+            return new List<DailyOrderNews>();
 
-         return result.Search.OrderInfo.Select(orderInfo =>
-         {
-            var dailyOrderNews = new DailyOrderNewsYahooSearch();
+         var latestOrderDates = rakutenGetOrderResponse.OrderModelList.SelectMany(o => o.PackageModelList.Select(x => x.SenderModel), 
+            (o, s) => new { 
+               key = string.Join(" ", s.ZipCode1, s.ZipCode2, s.Prefecture, s.City, s.SubAddress, s.FamilyName, s.FirstName),
+               orderDatetime = o.OrderDatetime})
+            .GroupBy(x => x.key)
+            .ToDictionary(g => g.Key, g => g.Max(x => x.orderDatetime));
 
-            orderInfo.Fields
-               .Where(field => validFields.Contains(field.Key)).ToList()
-               .ForEach(field =>
-                  dailyOrderNews = SetProperty(dailyOrderNews, field.Key, field.Value));
+         return rakutenGetOrderResponse.OrderModelList.SelectMany(order => order.PackageModelList
+            .SelectMany(package => package.ItemModelList
+               .Select((item, index) =>
+               {
+                  var sender = package.SenderModel;
+                  var couponTotal = order.CouponModelList?
+                        .SingleOrDefault(c => c.ItemDetailId == item.ItemDetailId)?.CouponTotalPrice ?? 0;
+                  var lineCount = package.ItemModelList.Count;
+                  var itemNumber = item.ItemNumber ?? item.ManageNumber;
+                  var merchantDefinedSkuId = item.SkuModelList.FirstOrDefault()?
+                        .MerchantDefinedSkuId ?? string.Empty;
+                  var skuCode = GetSKUCode(itemNumber, merchantDefinedSkuId,
+                        string.Empty, rakutenShop.ToString(), skuConversion);
+                  var key = string.Join(" ", sender.ZipCode1, sender.ZipCode2, sender.Prefecture, 
+                        sender.City, sender.SubAddress, sender.FamilyName, sender.FirstName);
 
-            return dailyOrderNews;
-         }).ToList();
+                  return new DailyOrderNews
+                  {
+                     ShopCode = rakutenShop.ToString(),
+                     ShipZip = sender.ZipCode1 + sender.ZipCode2,
+                     ShipPrefecture = sender.Prefecture,
+                     ShipCity = sender.City,
+                     ShipAddress1 = sender.SubAddress,
+                     ShipName = $"{sender.FamilyName} {sender.FirstName}",
+                     ShipTel = $"{sender.PhoneNumber1}{sender.PhoneNumber2}{sender.PhoneNumber3}",
+                     ShipEmail = string.Empty,
+                     OrderId = order.OrderNumber,
+                     OrderDate = order.OrderDatetime,
+                     OrderLineId = index + 1,
+                     Skucode = skuCode,
+                     OrderQty = item.Units,
+                     ConsumptionTaxRate = (decimal)item.TaxRate,
+                     OriginalPrice = item.PriceTaxIncl * item.Units,
+                     CouponDiscount = couponTotal,
+                     OrderDetailTotal = item.PriceTaxIncl * item.Units - couponTotal,
+                     LastOrderDate = latestOrderDates[key]
+                  };
+               })
+            )
+         ).ToList();
       }
 
       // マッピング処理（ HTTPResponseModel -> I/F Model ）
@@ -90,26 +124,15 @@ namespace ssAppModels.AppModels
       // DailyOrderNewsYahoo -> DailyOrderNews
       public static List<DailyOrderNews> YahooToDailyOrderNews(
          List<DailyOrderNewsYahoo> source, 
-         Dictionary<string, String> sellerIds, 
-         List<Skuconversion> skuConversion)
+         string yahooShop, 
+         DbSet<Skuconversion> skuConversion)
       {
          if (source == null || !source.Any()) return new List<DailyOrderNews>();
 
          // 最新のOrderTimeをキーグループ化して取得
          var latestOrderDates = source
-            .GroupBy(o => new
-            {
-               o.SellerId,
-               o.ShipZipCode,
-               o.ShipPrefecture,
-               o.ShipCity,
-               o.ShipAddress1,
-               o.ShipAddress2,
-               ShipName = $"{o.ShipLastName} {o.ShipFirstName}" // 氏名を結合
-            }).ToDictionary(
-               g => g.Key,
-               g => g.Max(o => o.OrderTime) // グループ内で最新のOrderTimeを取得
-            );
+            .GroupBy(o => string.Join(" ", o.SellerId, o.ShipZipCode, o.ShipPrefecture, o.ShipCity, o.ShipAddress1, o.ShipAddress2, o.ShipLastName, o.ShipFirstName))
+            .ToDictionary(g => g.Key, g => g.Max(o => o.OrderTime));
 
          // マッピング
          var result = new List<DailyOrderNews>();
@@ -117,38 +140,30 @@ namespace ssAppModels.AppModels
          {
             var mappedItem = new DailyOrderNews
             {
-               ShopCode = sellerIds[item.SellerId],               // モール・ショップID
-               ShipZip = item.ShipZipCode,                        // 出荷先郵便番号
-               ShipPrefecture = item.ShipPrefecture,              // 出荷先都道府県
-               ShipCity = item.ShipCity,                          // 出荷先市区町村
-               ShipAddress1 = item.ShipAddress1 ?? string.Empty,  // 出荷先住所1
-               ShipAddress2 = item.ShipAddress2 ?? string.Empty,  // 出荷先住所2
+               ShopCode = yahooShop,                                // モール・ショップID
+               ShipZip = item.ShipZipCode.Replace("-", ""),         // 出荷先郵便番号
+               ShipPrefecture = item.ShipPrefecture,                // 出荷先都道府県
+               ShipCity = item.ShipCity,                            // 出荷先市区町村
+               ShipAddress1 = item.ShipAddress1 ?? string.Empty,    // 出荷先住所1
+               ShipAddress2 = item.ShipAddress2 ?? string.Empty,    // 出荷先住所2
                ShipName = $"{item.ShipLastName} {item.ShipFirstName}", // 氏名結合
-               ShipTel = item.ShipPhoneNumber ?? string.Empty,    // 電話番号
-               ShipEmail = item.BillMailAddress ?? string.Empty,  // メールアドレス
-               OrderId = item.OrderId,                            // 注文ID
-               OrderDate = item.OrderTime,                        // 注文日時
-               OrderLineId = item.LineId,                         // 注文行番号
-               Skucode = GetSKUCode(item, 
-                  sellerIds[item.SellerId], skuConversion),       // SKUコード
-               OrderQty = item.Quantity,                          // 数量
-               ConsumptionTaxRate = item.ItemTaxRatio / 100m,     // 消費税率（intからdecimalへ変換）
-               OriginalPrice = item.UnitPrice,                    // オリジナル価格
-               CouponDiscount = item.CouponDiscount,              // クーポン値引き
-               OrderDetailTotal = item.UnitPrice * item.Quantity
-                  - item.CouponDiscount,                          // 注文明細合計
+               ShipTel = item.ShipPhoneNumber ?? string.Empty,      // 電話番号
+               ShipEmail = item.BillMailAddress ?? string.Empty,    // メールアドレス
+               OrderId = item.OrderId,                              // 注文ID
+               OrderDate = item.OrderTime,                          // 注文日時
+               OrderLineId = item.LineId,                           // 注文行番号
+               Skucode = GetSKUCode(item.ItemId, item.SubCode, 
+                  item.ItemOption, yahooShop, skuConversion),       // SKUコード
+               OrderQty = item.Quantity,                            // 数量
+               ConsumptionTaxRate = item.ItemTaxRatio / 100m,       // 消費税率（intからdecimalへ変換）
+               OriginalPrice = (item.UnitPrice + item.CouponDiscount)
+                  * item.Quantity,                                  // オリジナル価格
+               CouponDiscount = item.CouponDiscount * item.Quantity,// クーポン値引き
+               OrderDetailTotal = (item.UnitPrice + item.CouponDiscount) * item.Quantity
+                  - item.CouponDiscount * item.Quantity,            // 注文明細合計
             };
             // キーに基づいてLastOrderDateをセット（最新注文日時）
-            var key = new
-            {
-               item.SellerId, 
-               item.ShipZipCode, 
-               item.ShipPrefecture,
-               item.ShipCity, 
-               item.ShipAddress1, 
-               item.ShipAddress2,
-               ShipName = $"{item.ShipLastName} {item.ShipFirstName}"
-            };
+            var key = string.Join(" ", item.SellerId, item.ShipZipCode, item.ShipPrefecture, item.ShipCity, item.ShipAddress1, item.ShipAddress2, item.ShipLastName, item.ShipFirstName);
             if (latestOrderDates.TryGetValue(key, out var lastOrderDate))
                mappedItem.LastOrderDate = lastOrderDate;
 
@@ -158,25 +173,35 @@ namespace ssAppModels.AppModels
          return result;
       }
 
-      private static string GetSKUCode(DailyOrderNewsYahoo item, string shopCode, List<Skuconversion> skuConversion)
+      // 商品番号の共通化変換
+      private static string GetSKUCode(string itemId, string itemSub,
+         string itemOption, string shopCode, DbSet<Skuconversion> skuConversion)
       {
          //var orderId = item.ItemId + item.SubCode;
          var convertSKU = skuConversion
             .Where(x => x.ShopCode == shopCode 
-               && x.ProductCode == item.ItemId 
-               && x.ShopSkucode == item.SubCode)
+               && x.ProductCode == itemId
+               && x.ShopSkucode == itemSub)
             .Select(x => x.ProductCode + x.Skucode).FirstOrDefault();
          
-         var sku = convertSKU ?? item.ItemId + item.SubCode;
+         var sku = convertSKU ?? itemId + itemSub;
+
+         // Rakuten-ENZO SKUコンバート
+         if (shopCode == RakutenShop.Rakuten_ENZO.ToString())
+            return Regex.Replace(sku, @"(\w{6,})\1", "$1");
 
          // Yahoo-Yours SKUコンバート
-         if (shopCode != YahooShop.Yahoo_LARAL.ToString())
+         if (shopCode == YahooShop.Yahoo_Yours.ToString())
             return Regex.Replace(sku, @"(\w{6,})\1", "$1");
 
          // Yahoo-LARAL SKUコンバート
-         sku = Regex.Replace(sku, @"(\w{8,})\1", "$1");
-         var size = Regex.Match(item.ItemOption, @"(\d+)(?=cm)");
-         return size.Success ? $"{sku}-{size.Value}" : sku;
+         if (shopCode == YahooShop.Yahoo_LARAL.ToString())
+         {
+            sku = Regex.Replace(sku, @"(\w{8,})\1", "$1");
+            var size = Regex.Match(itemOption, @"(\d+)(?=cm)");
+            return size.Success ? $"{sku}-{size.Value}" : sku;
+         }
+         return string.Empty;
       }
 
       // Class のプロパティを設定する（動的Property対応）

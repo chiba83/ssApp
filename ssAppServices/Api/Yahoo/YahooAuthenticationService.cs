@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Text;
+﻿using System.Text;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Options;
 using ssAppModels.EFModels;
-using ssAppServices.Api;
 using ssAppModels.ApiModels;
 
 namespace ssAppServices.Api.Yahoo
