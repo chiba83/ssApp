@@ -33,7 +33,15 @@ public partial class ssAppDBContext : DbContext
 
     public virtual DbSet<ShipmentDetail> ShipmentDetails { get; set; }
 
+    public virtual DbSet<ShippingCondition> ShippingConditions { get; set; }
+
+    public virtual DbSet<ShippingGroup> ShippingGroups { get; set; }
+
+    public virtual DbSet<ShippingGroupMember> ShippingGroupMembers { get; set; }
+
     public virtual DbSet<Shop> Shops { get; set; }
+
+    public virtual DbSet<ShopToShippingGroup> ShopToShippingGroups { get; set; }
 
     public virtual DbSet<ShopToken> ShopTokens { get; set; }
 
@@ -43,23 +51,38 @@ public partial class ssAppDBContext : DbContext
     {
         modelBuilder.Entity<DailyOrderNews>(entity =>
         {
+            entity.HasKey(e => e.Id).HasName("PK_DailyOrderNews_ID");
+
             entity.Property(e => e.ConsumptionTaxRate).HasComment("消費税率");
             entity.Property(e => e.CouponDiscount).HasComment("クーポン値引き（税込）");
+            entity.Property(e => e.CustomField1).HasComment("楽天（送付先ID）");
+            entity.Property(e => e.CustomField2).HasComment("拡張項目（ショップ毎の拡張項目）");
+            entity.Property(e => e.CustomField3).HasComment("拡張項目（ショップ毎の拡張項目）");
+            entity.Property(e => e.CustomField4).HasComment("拡張項目（ショップ毎の拡張項目）");
+            entity.Property(e => e.CustomField5).HasComment("拡張項目（ショップ毎の拡張項目）");
             entity.Property(e => e.DeliveryCode)
                 .IsFixedLength()
                 .HasComment("配送マスタの一意の配送コード");
             entity.Property(e => e.DeliveryFee).HasComment("配送料");
             entity.Property(e => e.LastOrderDate).HasComment("分割注文の最新注文日時");
+            entity.Property(e => e.NormAddressLevel).HasComment("正規化レベル");
             entity.Property(e => e.OrderDate).HasComment("注文日時（楽天は注文確定日時）");
             entity.Property(e => e.OrderDetailTotal).HasComment("注文明細合計（税込）=オリジナル価格-クーポン値引き");
             entity.Property(e => e.OrderId).HasComment("注文の一意コード（各モールの注文ID）");
             entity.Property(e => e.OrderLineId).HasComment("注文明細行番号");
+            entity.Property(e => e.OrderLineTotal).HasComment("注文明細行番号合計");
             entity.Property(e => e.OrderQty).HasComment("注文数量（3桁：999）");
             entity.Property(e => e.OriginalPrice).HasComment("オリジナル価格（税込）");
             entity.Property(e => e.PackingCont1).HasComment("梱包内容1（配送ラベルへの記載用メモ）");
             entity.Property(e => e.PackingCont2).HasComment("梱包内容2（配送ラベルへの記載用メモ）");
             entity.Property(e => e.PackingCont3).HasComment("梱包内容3（配送ラベルへの記載用メモ）");
+            entity.Property(e => e.PackingId).HasComment("梱包コード");
+            entity.Property(e => e.PackingLineId).HasComment("梱包行番号");
+            entity.Property(e => e.PackingLineTotal).HasComment("梱包行番号合計");
+            entity.Property(e => e.PackingOrderIdCount).HasComment("1梱包あたりの注文ID同梱数");
+            entity.Property(e => e.PackingQty).HasComment("梱包数量");
             entity.Property(e => e.PackingSort).HasComment("注文商品コードをカンマ区切りで列挙。ソート用。商品毎にピッキングを行わせ効率を上げる");
+            entity.Property(e => e.ProductCode).HasComment("商品コード");
             entity.Property(e => e.ShipAddress1).HasComment("出荷先住所２");
             entity.Property(e => e.ShipAddress2).HasComment("出荷先住所３");
             entity.Property(e => e.ShipCity).HasComment("出荷先市区町村");
@@ -94,6 +117,9 @@ public partial class ssAppDBContext : DbContext
             entity.Property(e => e.DeliveryCompanyName).HasComment("日本郵便、ヤマト運輸、佐川急便、YFF");
             entity.Property(e => e.DeliveryFee).HasComment("配送料");
             entity.Property(e => e.DeliveryName).HasComment("配送サービス名（クリックポスト、ネコポス、普通郵便・・・）");
+            entity.Property(e => e.DeliveryPriority)
+                .HasDefaultValue(999)
+                .HasComment("配送方法が複数ある場合の適用優先順");
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasComment("配送方法が有効かどうかを示すフラグ");
@@ -298,6 +324,56 @@ public partial class ssAppDBContext : DbContext
                 .HasConstraintName("FK_ShipmentDetail_ShipmentCode");
         });
 
+        modelBuilder.Entity<ShippingCondition>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_ShippingConditions_ID");
+
+            entity.Property(e => e.Id).HasComment("自動インクリメントのプライマリキー");
+            entity.Property(e => e.DeliveryCode)
+                .IsFixedLength()
+                .HasComment("配送の一意コード（3桁：XXX）");
+            entity.Property(e => e.MaxPackageCapacity).HasComment("1梱包に詰められる最大数量");
+            entity.Property(e => e.MinThresholdQuantity).HasComment("しきい値（注文数量がこの値以上で条件適用）");
+            entity.Property(e => e.ShippingGroupId).HasComment("配送条件グループID");
+
+            entity.HasOne(d => d.DeliveryCodeNavigation).WithMany(p => p.ShippingConditions)
+                .HasPrincipalKey(p => p.DeliveryCode)
+                .HasForeignKey(d => d.DeliveryCode)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ShippingConditions_Delivery");
+
+            entity.HasOne(d => d.ShippingGroup).WithMany(p => p.ShippingConditions)
+                .HasPrincipalKey(p => p.ShippingGroupId)
+                .HasForeignKey(d => d.ShippingGroupId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ShippingConditions_Group");
+        });
+
+        modelBuilder.Entity<ShippingGroup>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_ShippingGroups_ID");
+
+            entity.Property(e => e.Id).HasComment("自動インクリメントのプライマリキー");
+            entity.Property(e => e.ShippingGroupId).HasComment("配送条件グループID");
+            entity.Property(e => e.ShippingGroupName).HasComment("配送条件グループ名");
+        });
+
+        modelBuilder.Entity<ShippingGroupMember>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_ShippingGroupMembers_ID");
+
+            entity.Property(e => e.Id).HasComment("自動インクリメントのプライマリキー");
+            entity.Property(e => e.MemberId).HasComment("ProductCodeまたはSKUCode");
+            entity.Property(e => e.MemberType).HasComment("構成商品メンバー識別（Product/SKU）");
+            entity.Property(e => e.ShippingGroupId).HasComment("配送条件グループID");
+
+            entity.HasOne(d => d.ShippingGroup).WithMany(p => p.ShippingGroupMembers)
+                .HasPrincipalKey(p => p.ShippingGroupId)
+                .HasForeignKey(d => d.ShippingGroupId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ShippingGroupMembers_Group");
+        });
+
         modelBuilder.Entity<Shop>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK_Shop_ID");
@@ -309,6 +385,27 @@ public partial class ssAppDBContext : DbContext
             entity.Property(e => e.MallCode).HasComment("Yahoo、Rakuten、Amazon");
             entity.Property(e => e.ShopCode).HasComment("Shopマスタの一意コード");
             entity.Property(e => e.ShopName).HasComment("LARAL、Yours、ENZO");
+        });
+
+        modelBuilder.Entity<ShopToShippingGroup>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_ShopToShippingGroup_ID");
+
+            entity.Property(e => e.Id).HasComment("自動インクリメントのプライマリキー");
+            entity.Property(e => e.ShippingGroupId).HasComment("配送条件グループID");
+            entity.Property(e => e.ShopCode).HasComment("Shopマスタの一意コード");
+
+            entity.HasOne(d => d.ShippingGroup).WithMany(p => p.ShopToShippingGroups)
+                .HasPrincipalKey(p => p.ShippingGroupId)
+                .HasForeignKey(d => d.ShippingGroupId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ShopToShippingGroup_Group");
+
+            entity.HasOne(d => d.ShopCodeNavigation).WithMany(p => p.ShopToShippingGroups)
+                .HasPrincipalKey(p => p.ShopCode)
+                .HasForeignKey(d => d.ShopCode)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ShopToShippingGroup_Shop");
         });
 
         modelBuilder.Entity<ShopToken>(entity =>

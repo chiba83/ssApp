@@ -55,11 +55,27 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[ShippingConditions]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ShippingGroupMembers]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ShippingGroups]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Shop]",
          "ObjectType": 0
       },
       {
          "Name": "[dbo].[ShopTokens]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ShopToShippingGroup]",
          "ObjectType": 0
       },
       {
@@ -72,6 +88,7 @@
    "UseAsyncStoredProcedureCalls": true,
    "UseBoolPropertiesWithoutDefaultSql": false,
    "UseDatabaseNames": false,
+   "UseDatabaseNamesForRoutines": true,
    "UseDateOnlyTimeOnly": true,
    "UseDbContextSplitting": false,
    "UseDecimalDataAnnotationForSprocResult": true,
@@ -90,5 +107,6 @@
    "UseSchemaFolders": false,
    "UseSchemaNamespaces": false,
    "UseSpatial": false,
-   "UseT4": false
+   "UseT4": false,
+   "UseT4Split": false
 }

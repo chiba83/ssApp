@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssAppCommon", "ssAppCommon\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssAppJob", "ssAppJob\ssAppJob.csproj", "{18F3BC47-BA37-4BDD-8BE0-1C2DF93CB8BE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NormalizeJapaneseAddressesNET", "Libraries\NormalizeJapaneseAddressesNET-master\NormalizeJapaneseAddressesNET\NormalizeJapaneseAddressesNET.csproj", "{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{18F3BC47-BA37-4BDD-8BE0-1C2DF93CB8BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{18F3BC47-BA37-4BDD-8BE0-1C2DF93CB8BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{18F3BC47-BA37-4BDD-8BE0-1C2DF93CB8BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

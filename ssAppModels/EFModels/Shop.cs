@@ -51,6 +51,9 @@ public partial class Shop
     public virtual ICollection<OrderHeader> OrderHeaders { get; set; } = new List<OrderHeader>();
 
     [InverseProperty("ShopCodeNavigation")]
+    public virtual ICollection<ShopToShippingGroup> ShopToShippingGroups { get; set; } = new List<ShopToShippingGroup>();
+
+    [InverseProperty("ShopCodeNavigation")]
     public virtual ShopToken ShopToken { get; set; }
 
     [InverseProperty("ShopCodeNavigation")]

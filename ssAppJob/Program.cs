@@ -5,6 +5,7 @@ using ssAppServices.Apps;
 using ssAppServices.Extensions;
 using ssAppModels.ApiModels;
 using Hangfire.Server;
+using Hangfire.States;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -82,19 +83,31 @@ try
 {
    // Add the recurring jobs
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
-       "DailyOrderNews - Yahoo_LARAL",
-       x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL),
-       "0,30 0-8,11-23 * * *" // 0分と30分で実行。ただし9時～10はスキップ
+      "DailyOrderNews - Yahoo_LARAL",
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL),
+      "0,30 5-23 * * *",
+      new RecurringJobOptions
+      {
+         TimeZone = TimeZoneInfo.Local
+      }
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
-       "DailyOrderNews - Yahoo_Yours",
-       x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours),
-       "0,30 0-8,11-23 * * *" // 0分と30分で実行。ただし9時～10はスキップ
+      "DailyOrderNews - Yahoo_Yours",
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours),
+      "0,30 5-23 * * *",
+      new RecurringJobOptions
+      {
+         TimeZone = TimeZoneInfo.Local
+      }
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
-       "DailyOrderNews - Rakuten_ENZO",
-       x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO),
-       "0,30 0-8,11-23 * * *" // 0分と30分で実行。ただし9時～10はスキップ
+      "DailyOrderNews - Rakuten_ENZO",
+      x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO),
+      "0,30 5-23 * * *",
+      new RecurringJobOptions
+      {
+         TimeZone = TimeZoneInfo.Local
+      }
    );
 
    Log("Jobs configured successfully.");

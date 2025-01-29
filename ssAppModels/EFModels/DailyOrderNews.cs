@@ -63,6 +63,11 @@ public partial class DailyOrderNews
     public string ShipAddress2 { get; set; }
 
     /// <summary>
+    /// 正規化レベル
+    /// </summary>
+    public int? NormAddressLevel { get; set; }
+
+    /// <summary>
     /// 出荷先氏名
     /// </summary>
     [Required]
@@ -104,6 +109,19 @@ public partial class DailyOrderNews
     public int OrderLineId { get; set; }
 
     /// <summary>
+    /// 注文明細行番号合計
+    /// </summary>
+    public int OrderLineTotal { get; set; }
+
+    /// <summary>
+    /// 商品コード
+    /// </summary>
+    [Required]
+    [StringLength(15)]
+    [Unicode(false)]
+    public string ProductCode { get; set; }
+
+    /// <summary>
     /// SKUの一意コード
     /// </summary>
     [Required]
@@ -119,6 +137,29 @@ public partial class DailyOrderNews
     public int OrderQty { get; set; }
 
     /// <summary>
+    /// 梱包コード
+    /// </summary>
+    [Required]
+    [StringLength(25)]
+    [Unicode(false)]
+    public string PackingId { get; set; }
+
+    /// <summary>
+    /// 1梱包あたりの注文ID同梱数
+    /// </summary>
+    public int PackingOrderIdCount { get; set; }
+
+    /// <summary>
+    /// 梱包行番号
+    /// </summary>
+    public int PackingLineId { get; set; }
+
+    /// <summary>
+    /// 梱包行番号合計
+    /// </summary>
+    public int PackingLineTotal { get; set; }
+
+    /// <summary>
     /// 配送マスタの一意の配送コード
     /// </summary>
     [StringLength(3)]
@@ -129,6 +170,12 @@ public partial class DailyOrderNews
     /// 配送料
     /// </summary>
     public int? DeliveryFee { get; set; }
+
+    /// <summary>
+    /// 梱包数量
+    /// </summary>
+    [Column("PackingQTY")]
+    public int? PackingQty { get; set; }
 
     /// <summary>
     /// 注文商品コードをカンマ区切りで列挙。ソート用。商品毎にピッキングを行わせ効率を上げる
@@ -204,4 +251,39 @@ public partial class DailyOrderNews
     /// </summary>
     [Column(TypeName = "decimal(8, 2)")]
     public decimal OrderDetailTotal { get; set; }
+
+    /// <summary>
+    /// 楽天（送付先ID）
+    /// </summary>
+    [StringLength(30)]
+    [Unicode(false)]
+    public string CustomField1 { get; set; }
+
+    /// <summary>
+    /// 拡張項目（ショップ毎の拡張項目）
+    /// </summary>
+    [StringLength(30)]
+    [Unicode(false)]
+    public string CustomField2 { get; set; }
+
+    /// <summary>
+    /// 拡張項目（ショップ毎の拡張項目）
+    /// </summary>
+    [StringLength(30)]
+    [Unicode(false)]
+    public string CustomField3 { get; set; }
+
+    /// <summary>
+    /// 拡張項目（ショップ毎の拡張項目）
+    /// </summary>
+    [StringLength(30)]
+    [Unicode(false)]
+    public string CustomField4 { get; set; }
+
+    /// <summary>
+    /// 拡張項目（ショップ毎の拡張項目）
+    /// </summary>
+    [StringLength(30)]
+    [Unicode(false)]
+    public string CustomField5 { get; set; }
 }

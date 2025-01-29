@@ -60,10 +60,18 @@ public partial class Delivery
     public bool TrackingFlag { get; set; }
 
     /// <summary>
+    /// 配送方法が複数ある場合の適用優先順
+    /// </summary>
+    public int DeliveryPriority { get; set; }
+
+    /// <summary>
     /// 配送方法が有効かどうかを示すフラグ
     /// </summary>
     public bool IsActive { get; set; }
 
     [InverseProperty("DeliveryCodeNavigation")]
     public virtual ICollection<Shipment> Shipments { get; set; } = new List<Shipment>();
+
+    [InverseProperty("DeliveryCodeNavigation")]
+    public virtual ICollection<ShippingCondition> ShippingConditions { get; set; } = new List<ShippingCondition>();
 }
