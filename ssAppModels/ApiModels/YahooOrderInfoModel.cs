@@ -483,4 +483,5 @@ namespace ssAppModels.ApiModels
          };
       }
    }
+
 }

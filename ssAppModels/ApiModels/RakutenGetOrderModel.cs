@@ -54,6 +54,13 @@ namespace ssAppModels.ApiModels
       public List<RakutenGetOrderOrderModel>? OrderModelList { get; set; }    // 受注情報モデルリスト
       [JsonProperty("version")]
       public int Version { get; set; }                    // バージョン番号
+
+      public RakutenGetOrderResponse()
+      {
+         MessageModelList = new List<RakutenGetOrderMessageModel>();
+         OrderModelList = new List<RakutenGetOrderOrderModel>();
+         Version = 0;
+      }
    }
    // Level 2
    public class RakutenGetOrderMessageModel

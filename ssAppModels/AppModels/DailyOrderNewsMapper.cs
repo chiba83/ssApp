@@ -1,5 +1,6 @@
 ﻿#pragma warning disable  CS8620
 using Microsoft.EntityFrameworkCore;
+using NormalizeJapaneseAddressesNET;
 using ssAppModels.ApiModels;
 using ssAppModels.EFModels;
 using System.Text.RegularExpressions;
@@ -8,41 +9,216 @@ namespace ssAppModels.AppModels;
 
 public static class DailyOrderNewsMapper
 {
-   public static List<DailyOrderNews> SetPackingColumns(List<DailyOrderNews>? dailyOrderNews, string shopCode, ssAppDBContext _dbContext)
+   /// <summary>
+   /// 配送伝票用プロパティ。置換マップ
+   /// Key：検索文字列、Value：置換後の文字列
+   /// 伝票の内容品文字数制限対応のため繰り返し出現する文字列を短く置換する。
+   /// </summary>
+   private static readonly Dictionary<string, string> ReplacementMap = new Dictionary<string, string>
+   {
+      { "靴下S", "S" }, { "靴下L", "L" }, { "替えブラシ", "" }, { "USB-C", "" },
+      { "ライト", "" }, { "ベネチアン", "" }, { "アズキ", "" }, { "スクリュー", "" },
+   };
+   /// <summary>
+   /// 配送伝票用プロパティ。適用枠の記載文字数制限対応。
+   /// 伝票の適用枠に注文IDを記載するが文字数制限数に対応するためショップ毎のIDプレフィックス文字数を保持する。
+   /// </summary>
+   private static readonly Dictionary<string, int> LabelItemCount = new Dictionary<string, int>
+   {
+      { "003", 2 }, { "020", 1 }, { "092", 2 },
+   };
+   /// <summary>
+   /// 配送伝票用プロパティ。内容品の記載枠数。
+   /// 伝票の内容品枠数を配送会社毎に固定変数として保持する。
+   /// </summary>
+   private static readonly Dictionary<string, int> ShopOrderPrefixSize = new Dictionary<string, int>
+   {
+      // Yahoo_LARAL ：axis-j-xxxxxxxx
+      // Yahoo_Yours ：yours-ja-xxxxxxxx
+      // Rakuten_ENZO：413247-20250205-xxxxxxxxxx
+      { "Yahoo_LARAL", 7 }, { "Yahoo_Yours", 9 }, { "Rakuten_ENZO", 16 },
+   };
+
+   public static List<DailyOrderNews> SetPackingColumns(
+      List<DailyOrderNews>? dailyOrderNews, string shopCode, 
+      bool normalizeAddresses, ssAppDBContext _dbContext)
    {
       if (dailyOrderNews?.Any() != true) return new List<DailyOrderNews>();
 
       // PackingIdごとにグループ化して処理
       return dailyOrderNews
       .GroupBy(
-         s => string.Join(" ", s.ShipZip, s.ShipPrefecture, s.ShipCity, s.ShipAddress1, s.ShipAddress2, s.ShipName),
-         (key, group) => new
-         {
-            Key = key,
-            Items = group.OrderBy(x => x.OrderId).ToList()
-         })
+         s => new { s.ShipZip, s.ShipPrefecture, s.ShipCity, s.ShipAddress1, s.ShipAddress2, s.ShipName },
+         (key, group) => new { Key = key, Items = group.OrderBy(x => x.OrderId).ToList()})
       .SelectMany((group, groupIndex) =>
       {
-         DateTime lastOrderDate = group.Items.Max(x => x.OrderDate);
-         string packingId = $"{shopCode}-{(groupIndex + 1).ToString("D4")}";
-         int distinctOrderIdCount = group.Items.Select(x => x.OrderId).Distinct().Count();
-         int packingLineTotal = group.Items.Count;
-         string packingSort = string.Join(",", group.Items.OrderBy(x => x.Skucode).Select(x => $"{x.Skucode}*{x.OrderQty}"));
-         var(deliveryCode, PackingQTY) = GetDeliveryCode(group.Items, shopCode, _dbContext);
+         var items = group.Items;
+         var originalAddress = $"{group.Key.ShipPrefecture}{group.Key.ShipCity}{group.Key.ShipAddress1}{group.Key.ShipAddress2}";
+         var normalize = normalizeAddresses ? NormalizeJapaneseAddresses.Normalize(originalAddress).Result : null;
+         var (addressNumber, building) = normalize?.level == 3 ? SplitAddress(normalize.addr) : ("","");
+         var lastOrderDate = items.Max(x => x.OrderDate);
+         var packingId = $"{shopCode}-{(groupIndex + 1):D4}0";
+         var distinctOrderIdCount = items.Select(x => x.OrderId).Distinct().Count();
+         var packingLineTotal = items.Count;
+         var packingSort = string.Join(",", items.OrderBy(x => x.Skucode)
+            .Select(x => $"{x.Skucode}*{x.OrderQty}"));
+         var(deliveryCode, PackingQTY) = GetDeliveryCode(items, shopCode, _dbContext);
+         var deliveryFee = DistributeAmount(deliveryCode, PackingQTY, packingLineTotal, _dbContext);
+         var PackingCont = SplitAndConcatProductNames(items, deliveryCode, _dbContext);
+         var packingCont1 = ReplaceDuplicates(PackingCont[0]);
+         var packingCont2 = PackingCont.Count > 1 ? ReplaceDuplicates(PackingCont[1]) : string.Empty;
+         var orderIds = items.GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
+         var shipNotes = ConcatStringsFromPosition(orderIds, shopCode);
 
-         return group.Items.Select((item, itemIndex) =>
+         return items.Select((item, itemIndex) =>
          {
             item.LastOrderDate = lastOrderDate;
+            if (normalize?.level == 3)
+            {
+               item.ShipPrefecture = normalize.pref;
+               item.ShipCity = normalize.city;
+               item.ShipAddress1 = $"{normalize.town}{addressNumber}" ;
+               item.ShipAddress2 = building;
+            }
+            item.NormAddressLevel = normalize != null ? normalize.level : null;
             item.PackingId = packingId;
             item.PackingOrderIdCount = distinctOrderIdCount;
             item.PackingLineId = itemIndex + 1;
             item.PackingLineTotal = packingLineTotal;
             item.PackingSort = packingSort;
-            item.DeliveryCode = deliveryCode;
-            item.PackingQty = PackingQTY;
+            item.DeliveryFee = (int?)deliveryFee[itemIndex];
+            item.ShipNotes = shipNotes;
+            var (code, qty) = GetDeliveryCode(new List<DailyOrderNews> { item }, shopCode, _dbContext);
+            item.LineDeliveryCode = code;
+            if (packingLineTotal == itemIndex + 1)
+            {
+               item.DeliveryCode = deliveryCode;
+               item.PackingQty = PackingQTY;
+               item.IsDeliveryLabel = true;
+               item.PackingCont1 = packingCont1;
+               item.PackingCont2 = packingCont2;
+            } else
+            {
+               item.PackingQty = qty;
+               item.IsDeliveryLabel = false;
+            }
             return item;
          });
       }).ToList();
+   }
+
+   private static (string? , string?) SplitAddress(string input)
+   {
+      // 正規表現で番地と建物名を分離
+      var regex = new Regex(@"^(.+?\d+(?:-\d+)*)(?:\s*(.+))?$"); var match = regex.Match(input);
+      if (match.Success)
+      {
+         string houseNumber = match.Groups[1].Value.Trim(); // 番地
+         string buildingName = match.Groups[2].Success ? match.Groups[2].Value.Trim() : null; // 建物名（オプション）
+         return (houseNumber, buildingName);
+      }
+      // 分割できなかった場合、全体を番地として扱い、建物名は null
+      return (input, null);
+   }
+
+   /// <summary>
+   /// 送料を梱包明細数で按分する。
+   /// </summary>
+   public static List<decimal> DistributeAmount(string deliveryCode, int PackingQTY, int packingLineTotal, ssAppDBContext _dbContext)
+   {
+      // 例外処理：packingLineTotal が 0 以下の場合、空のリストを返す
+      if (packingLineTotal <= 0) return new List<decimal>();
+
+      // 合計金額計算
+      var deliveryFee = _dbContext.Deliveries.FirstOrDefault(x => x.DeliveryCode == deliveryCode)?.DeliveryFee ?? 0;
+      var totalAmount = deliveryFee * PackingQTY;
+      // 合計金額が 0 の場合はすべて 0 を返す
+      if (totalAmount == 0)
+         return Enumerable.Repeat(0m, packingLineTotal).ToList();
+
+      // 1件あたりの金額（小数点以下切り捨て）
+      decimal perItemAmount = Math.Floor((decimal)totalAmount / packingLineTotal);
+      // 端数の合計（最後の明細で調整）
+      decimal remainder = totalAmount - (perItemAmount * packingLineTotal);
+      // 明細ごとの金額リスト
+      var distributedAmounts = Enumerable.Repeat(perItemAmount, packingLineTotal).ToList();
+      // 端数を最後の明細に加算（安全チェック）
+      if (remainder > 0)
+         distributedAmounts[packingLineTotal - 1] += remainder;
+      return distributedAmounts;
+   }
+
+   /// <summary>
+   /// 配送伝票関連メソッド。配送適用欄の文字数制限に合わせて各モールの注文IDの固定部分をブランクにする。
+   /// 注文IDが複数の場合、2つ目以降のIDの固定部分をブランクにする。
+   /// </summary>
+   private static string ConcatStringsFromPosition(List<string> inputList,  string shopCode)
+   {
+      //　例（楽天）
+      // inputList = { "413247-20250205-0000000001", "413247-20250205-0000000002", "413247-20250205-0000000003" }
+      // startIndex = 16
+      // 戻り値 = "413247-20250205-0000000001, 0000000002, 0000000003"
+      var startIndex = ShopOrderPrefixSize.TryGetValue(shopCode, out int value) ? value : 1;
+
+      return string.Join(", ", inputList.Select((s, i) => i == 0 
+         ? s : (s.Length >= startIndex ? s[startIndex..] : "")));
+   }
+
+   /// <summary>
+   /// 配送伝票関連メソッド。配送伝票の内容物記載枠数に合わせて注文商品名を等分割する。
+   /// </summary>
+   public static List<string> SplitAndConcatProductNames(
+      List<DailyOrderNews> packingGroupItems, string deliveryCode, 
+      ssAppDBContext _dbContext)
+   {
+      var splitCount = LabelItemCount.TryGetValue(deliveryCode, out int value) ? value : 1;
+
+      // 商品コードから商品名を取得（商品名 + "×" + 購入数）購入数が1の場合は商品名のみ
+      var productNames = packingGroupItems.OrderBy(x => x.Skucode)
+         .Select(sku =>
+         { 
+            var skuAbbr = _dbContext.ProductSkus
+               .SingleOrDefault(x => x.Skucode == sku.Skucode)?.Skuabbr ?? string.Empty;
+            return sku.OrderQty > 1 ? $"{skuAbbr}×{sku.OrderQty}" : skuAbbr; 
+         }).ToList();
+
+      // 伝票の内容品１枠あたりの商品名数を計算（splitCount：伝票の枠数）
+      int splitSize = (int)Math.Ceiling((double)productNames.Count / splitCount);
+
+      // 商品名をN分割して連結
+      var result = productNames
+         .Select((value, index) => new { value, index })
+         .GroupBy(x => x.index / splitSize)
+         .Select(group => string.Join("、", group.Select(x => x.value)))
+         .ToList();
+      return result;
+   }
+
+   /// <summary>
+   /// 発送商品名の重複文字列置換処理
+   /// 同一商品名の2回目以降の出現箇所を置換する。
+   /// </summary>
+   public static string ReplaceDuplicates(string input)
+   {
+      Dictionary<string, bool> seen = new Dictionary<string, bool>();
+      string result = input;
+
+      foreach (var key in ReplacementMap.Keys)
+      {
+         int firstIndex = result.IndexOf(key);
+         if (firstIndex == -1) continue; // 置換対象がない場合はスキップ
+
+         seen[key] = true; // 初回はそのまま
+
+         // 2回目以降の出現箇所を置換
+         int secondIndex = result.IndexOf(key, firstIndex + key.Length);
+         while (secondIndex != -1)
+         {
+            result = result.Remove(secondIndex, key.Length).Insert(secondIndex, ReplacementMap[key]);
+            secondIndex = result.IndexOf(key, secondIndex + ReplacementMap[key].Length);
+         }
+      }
+      return result;
    }
 
    /// <summary>
@@ -105,8 +281,8 @@ public static class DailyOrderNewsMapper
                gq.TotalQty,
                sc.MaxPackageCapacity,
                Priority = _dbContext.Deliveries.Single(d => d.DeliveryCode == sc.DeliveryCode).DeliveryPriority
-            })
-         ).OrderBy(x => x.Priority).FirstOrDefault();
+            }))
+         .OrderBy(x => x.Priority).FirstOrDefault();
 
       if (applicableConditions != null)
       {
@@ -122,7 +298,7 @@ public static class DailyOrderNewsMapper
    public static List<DailyOrderNews> RakutenToDailyOrderNews(
       RakutenGetOrderResponse rakutenGetOrderResponse,
       RakutenShop rakutenShop,
-      DbSet<Skuconversion> skuConversion)
+      ssAppDBContext _dbContext)
    {
       if (rakutenGetOrderResponse.OrderModelList?.Any() != true) return new List<DailyOrderNews>();
 
@@ -139,8 +315,8 @@ public static class DailyOrderNewsMapper
                var merchantDefinedSkuId = item.SkuModelList
                      .FirstOrDefault()?.MerchantDefinedSkuId ?? string.Empty;
                var (productCode, skuCode) = GetSKUCode(itemNumber, merchantDefinedSkuId,
-                     string.Empty, rakutenShop.ToString(), skuConversion);
-
+                     string.Empty, rakutenShop.ToString(), _dbContext.Skuconversions);
+               var productName = _dbContext.ProductSkus.FirstOrDefault(x => x.Skucode == skuCode);
                return new DailyOrderNews
                {
                   ShopCode = rakutenShop.ToString(),
@@ -157,6 +333,8 @@ public static class DailyOrderNewsMapper
                   OrderLineTotal = lineTotal,
                   ProductCode = productCode,
                   Skucode = skuCode,
+                  Skuname = productName?.Skuname ?? string.Empty,
+                  Skuabbr = productName?.Skuabbr ?? string.Empty,
                   OrderQty = item.Units,
                   ConsumptionTaxRate = (decimal)item.TaxRate,
                   OriginalPrice = item.PriceTaxIncl * item.Units,
@@ -176,7 +354,7 @@ public static class DailyOrderNewsMapper
       if (responses == null || !responses.Any())
          return new List<DailyOrderNewsYahoo>();
       // 対象プロパティ名の取得
-      var validFields = DailyOrderNewsModelHelper.GetYahooOrderInfoFields();
+      var validFields = AppModelHelpers.GetDailyOrderNewsFields();
 
       return responses.SelectMany(response =>
       {
@@ -227,7 +405,7 @@ public static class DailyOrderNewsMapper
    public static List<DailyOrderNews> YahooToDailyOrderNews(
       List<DailyOrderNewsYahoo> source, 
       string yahooShop, 
-      DbSet<Skuconversion> skuConversion)
+      ssAppDBContext _dbContext)
    {
       if (source?.Any() != true) return new List<DailyOrderNews>();
 
@@ -241,7 +419,9 @@ public static class DailyOrderNewsMapper
       foreach (var item in source)
       {
          var (productCode, skuCode) = GetSKUCode(item.ItemId, item.SubCode,
-            item.ItemOption, yahooShop, skuConversion);
+            item.ItemOption, yahooShop, _dbContext.Skuconversions);
+         var productName = _dbContext.ProductSkus.FirstOrDefault(x => x.Skucode == skuCode);
+
          var mappedItem = new DailyOrderNews
          {
             ShopCode = yahooShop,                                // モール・ショップID
@@ -259,6 +439,8 @@ public static class DailyOrderNewsMapper
             OrderLineTotal = orderLineTotals[item.OrderId],      // 注文行番号合計
             ProductCode = productCode,                           // 商品コード
             Skucode = skuCode,                                   // SKUコード
+            Skuname = productName?.Skuname ?? string.Empty,      // SKU名
+            Skuabbr = productName?.Skuabbr ?? string.Empty,      // SKU略称
             OrderQty = item.Quantity,                            // 数量
             ConsumptionTaxRate = item.ItemTaxRatio / 100m,       // 消費税率（intからdecimalへ変換）
             OriginalPrice = (item.UnitPrice + item.CouponDiscount)
@@ -283,10 +465,9 @@ public static class DailyOrderNewsMapper
             x.ShopProductCode == itemId && x.ShopSkucode == itemSub)
          .Select(x => new { x.ProductCode, x.Skucode }).FirstOrDefault();
 
-      if (convertCode != null)
-         return (convertCode.ProductCode, convertCode.Skucode);
-
       var sku = itemId + itemSub;
+      if (convertCode != null)
+         (itemId, sku) = (convertCode.ProductCode, convertCode.Skucode);
 
       // Rakuten-ENZO SKUコンバート
       if (shopCode == RakutenShop.Rakuten_ENZO.ToString())

@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity version="1.0.0.0" name="ssAppServices" />
+  <file name="ssAppServices.dll">
+    <comClass clsid="{CA80F97B-1D94-48A6-B87D-1460F13EA3CD}" threadingModel="Both" />
+  </file>
+</assembly>

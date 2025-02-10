@@ -80,7 +80,7 @@ public class RakutenSearchOrder
       RakutenSearchOrderRequest requestParameter, RakutenShop rakutenShop)
    {
       // ShopToken 情報の取得
-      var shopToken = ssAppDBHelper.GetShopToken(_dbContext, rakutenShop.ToString());
+      var shopToken = ApiHelpers.GetShopToken(_dbContext, rakutenShop.ToString());
       // リクエストオブジェクトの作成
       var requestMessage = ApiHelpers.SetRakutenRequest(_apiEndpoint, requestParameter, shopToken);
       // PollyContext を生成

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ssAppModels.ApiModels;
 using ssAppModels.EFModels;
 using ssAppServices;
+using ssAppServices.Api;
 using ssAppServices.Api.Yahoo;
 using System.Xml.Linq;
 
@@ -49,7 +50,7 @@ namespace ssApptests.ssAppServices.Api
 
          foreach (YahooShop yahooShop in Enum.GetValues(typeof(YahooShop)))
          {
-            var sellerid = ssAppDBHelper.GetShopToken(_dbContext, yahooShop.ToString()).SellerId;
+            var sellerid = ApiHelpers.GetShopToken(_dbContext, yahooShop.ToString()).SellerId;
             var yahooOrderListRequest = YahooOrderListRequestFactory.NewOrderRequest(startDT, endDT, 1, outputFields, sellerid);
 
             // Act: Yahoo注文検索APIを呼び出す
@@ -109,7 +110,7 @@ namespace ssApptests.ssAppServices.Api
 
          foreach (YahooShop yahooShop in Enum.GetValues(typeof(YahooShop)))
          {
-            var sellerid = ssAppDBHelper.GetShopToken(_dbContext, yahooShop.ToString()).SellerId;
+            var sellerid = ApiHelpers.GetShopToken(_dbContext, yahooShop.ToString()).SellerId;
             var yahooOrderListRequest = YahooOrderListRequestFactory.NewOrderRequest(startDT, endDT, 1, outputFields, sellerid);
 
             // Test用 OrderIDを取得
@@ -153,7 +154,7 @@ namespace ssApptests.ssAppServices.Api
 
          foreach (YahooShop yahooShop in Enum.GetValues(typeof(YahooShop)))
          {
-            var sellerid = ssAppDBHelper.GetShopToken(_dbContext, yahooShop.ToString()).SellerId;
+            var sellerid = ApiHelpers.GetShopToken(_dbContext, yahooShop.ToString()).SellerId;
             var outputFields = string.Join(",", YahooOrderListRequestFactory.OutputFieldsDefault);
             var yahooOrderListRequest = YahooOrderListRequestFactory.ShippedOrderRequest(startDT, endDT, 1, outputFields, sellerid);
 

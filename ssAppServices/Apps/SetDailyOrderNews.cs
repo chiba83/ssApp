@@ -1,9 +1,10 @@
-﻿#pragma warning disable CS8620
+﻿#pragma warning disable CS8620, CS8602
 using ssAppModels.EFModels;
 using ssAppModels.ApiModels;
 using ssAppModels.AppModels;
 using ssAppServices.Api.Yahoo;
 using ssAppServices.Api.Rakuten;
+using Azure;
 
 // 【 処理概要 】
 // 各モールショップの新規注文（出荷対象注文）を取得し、DailyOrderNewsに保存する。
@@ -20,128 +21,99 @@ namespace ssAppServices.Apps;
 public class SetDailyOrderNews
 {
    private readonly ssAppDBContext _dbContext;
-   private readonly YahooOrderList _yahooOrderList;
-   private readonly YahooOrderInfo _yahooOrderInfo;
-   private readonly RakutenSearchOrder _rakutenSearchOrder;
-   private readonly RakutenGetOrder _rakutenGetOrder;
+   private readonly YahooApiExecute _YahooApiExecute;
+   private readonly RakutenApiExecute _rakutenApiExecute;
 
    public SetDailyOrderNews(
       ssAppDBContext dbContext,
       YahooOrderList yahooOrderList, YahooOrderInfo yahooOrderInfo,
-      RakutenSearchOrder rakutenSearchOrder, RakutenGetOrder rakutenGetOrder)
+      YahooApiExecute yahooApiExecute,
+      RakutenApiExecute rakutenApiExecute)
    {
       _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-      _yahooOrderList = yahooOrderList ?? throw new ArgumentNullException(nameof(yahooOrderList));
-      _yahooOrderInfo = yahooOrderInfo ?? throw new ArgumentNullException(nameof(yahooOrderInfo));
-      _rakutenSearchOrder = rakutenSearchOrder ?? throw new ArgumentNullException(nameof(rakutenSearchOrder));
-      _rakutenGetOrder = rakutenGetOrder ?? throw new ArgumentNullException(nameof(rakutenGetOrder));
+      _YahooApiExecute = yahooApiExecute ?? throw new ArgumentNullException(nameof(yahooApiExecute));
+      _rakutenApiExecute = rakutenApiExecute ?? throw new ArgumentNullException(nameof(rakutenApiExecute));
    }
 
    /// <summary>
    /// Rakuten注文情報を取得しDailyOrderNewsに保存する。
    /// 注文明細（GetOrder）Max 100件/リクエストなので、ページング処理を実装する。
    /// </summary>
-   /// 戻り値：(注文番号リスト, 注文詳細情報)→デバッグ用
-   /// 　注文番号リストは全件を戻り値へセットする。
-   /// 　注文情報は最初のレスポンス（最大100件）のみ戻り値へセットする。
-   public (List<string>, RakutenGetOrderResponse) FetchDailyOrderFromRakuten(RakutenShop rakutenShop)
+   /// <returns>
+   /// 注文番号リスト：テスト用。
+   /// 注文詳細情報：テスト用。
+   /// </returns>
+   public (List<string>?, RakutenGetOrderResponse?) FetchDailyOrderFromRakuten(RakutenShop rakutenShop)
    {
-      var mallShop = Enum.GetValues(typeof(MallShop)).Cast<MallShop>()
-            .FirstOrDefault(m => m.ToString() == rakutenShop.ToString());
-      // 注文一覧取得：RakutenSearchOrder実行
-      var searchOrderParameter = RakutenSearchOrderRequestFactory.NewOrderRequest(null, null, 1);
-      // RunGetSearchOrderはページング処理を実行します。全オーダーを取得します。
-      var searchOrder = _rakutenSearchOrder.RunGetSearchOrder(searchOrderParameter, rakutenShop);
-      
-      // 注文情報が取得できない場合は処理を終了
-      if (searchOrder.PaginationResponse?.TotalRecordsAmount.GetValueOrDefault() == 0
-         ||  searchOrder.OrderNumberList?.Any() != true)
-         return (new List<string>(), new RakutenGetOrderResponse());
+      // リクエストに対する全オーダー明細を取得します。（上限2000件）
+      var getOrderResponse = _rakutenApiExecute.GetNewOrders(null, null, rakutenShop);
 
-      var orderNumbers = searchOrder.OrderNumberList;
-      var initialGetOrder = new RakutenGetOrderResponse();
+      // マッピング処理（ HTTPResponseModel -> DailyOrderNews ）
+      var dailyOrderNews = getOrderResponse == null ? null :
+         DailyOrderNewsMapper.RakutenToDailyOrderNews(
+            getOrderResponse, rakutenShop, _dbContext);
 
-      using (var transaction = _dbContext.Database.BeginTransaction())
-      {
-         try
-         {
-            // Remove 処理
-            RemoveDailyOrderNews(mallShop);
-            _dbContext.SaveChanges(); // SaveChangesでメモリ解放
+      // 梱包情報をセット
+      var mallShop = MallShopConverter.ToMallShop(rakutenShop);
+      dailyOrderNews = DailyOrderNewsMapper.SetPackingColumns(dailyOrderNews, mallShop.ToString(), true, _dbContext);
 
-            // 注文明細取得：GetOrder 実行。Max 100件/Request(1ページ)
-            var dailyOrderNews = new List<DailyOrderNews>();
+      // テーブル更新処理
+      UpdateDailyOrderNews(dailyOrderNews, mallShop);
 
-            for (int page = 1; page <= searchOrder.PaginationResponse!.TotalPages; page++)
-            {
-               // GetOrder リクエストパラメータ
-               var getOrderParameter = RakutenGetOrderRequestFactory.LatestVersionRequest( 
-                  searchOrder.OrderNumberList.Skip((page - 1) * 100).Take(100).ToList());
-
-               // GetOrder 実行。Max 100件/Request(1ページ)
-               var getOrder = _rakutenGetOrder.GetOrder(getOrderParameter, rakutenShop);
-               if (page == 1) initialGetOrder = getOrder;
-
-               // マッピング処理（ HTTPResponseModel -> DB ）
-               dailyOrderNews.AddRange(DailyOrderNewsMapper.RakutenToDailyOrderNews(
-                     getOrder, rakutenShop, _dbContext.Skuconversions));
-            }
-
-            // 梱包情報をセット
-            dailyOrderNews = DailyOrderNewsMapper.SetPackingColumns(dailyOrderNews, mallShop.ToString(), _dbContext);
-
-            // DailyOrderNews更新処理
-            UpdateDailyOrderNews(dailyOrderNews);
-            _dbContext.SaveChanges(); // SaveChangesでメモリ解放
-            transaction.Commit();
-         }
-         catch (Exception ex)
-         {
-            transaction.Rollback();
-            throw new Exception("FetchDailyOrderFromRakutenでエラーが発生しました。", ex);
-         }
-         return (orderNumbers, initialGetOrder);
-      } 
+      var orderNumbers = getOrderResponse.OrderModelList?.Select(x => x.OrderNumber).ToList();
+      return (orderNumbers, getOrderResponse);
    }
 
    /// <summary>
    /// Yahoo注文情報を取得しDailyOrderNewsに保存する。
-   /// </summary>
-   /// 戻り値：(注文番号リスト, 注文詳細情報)→デバッグ用
-   /// 　注文番号リストは全件を戻り値へセットする。
    /// ページング処理について
-   /// 　Yahoo：GetOrderSearchは、2,000件/リクエストなので十分。ページング不要
-   /// 　Yahoo：GetOrderInfoは引数の全注文番号を取得する。日次の取得件数（Max200件以下）であればページング不要。
+   /// GetOrderSearchは、2,000件/リクエストなので十分。ページング不要
+   /// GetOrderInfoは引数の全注文番号を取得する。日次の取得件数（Max200件以下）であればページング不要。
+   /// </summary>
+   /// <returns>
+   /// 注文番号リスト：全件を戻り値へセットする。
+   /// 注文詳細情報
+   /// </returns>
    public (List<DailyOrderNewsYahoo>?, List<DailyOrderNews>?) FetchDailyOrderFromYahoo(YahooShop yahooShop)
    {
-      // YahooOrderSearch実行：注文一覧取得。Max 2,000件の注文リストを取得
-      var yahooOrderListResult = GetYahooOrderList(yahooShop);
-      var orderIds = yahooOrderListResult.Search.OrderInfo
-          .Select(x => x.Fields["OrderId"].ToString()).ToList();
+      // リクエストに対する全オーダー明細を取得します。（上限2000件）
+      var getOrderResponse = _YahooApiExecute.GetNewOrders(null, null, AppModelHelpers.GetDailyOrderNewsFields(), yahooShop);
 
-      // YahooOrderInfo実行：注文詳細情報取得（引数orderIdsの詳細情報を取得：Max 2,000件）
-      var orderInfo = GetYahooOrderInfo(orderIds, yahooShop);
-
-      // マッピング処理 - DailyOrderNewsYahoo -> DailyOrderNews
+      // マッピング処理 1 - HttpResponseModel -> interface Model
+      var orderInfo = DailyOrderNewsMapper.YahooOrderInfo(getOrderResponse, yahooShop);
+      // マッピング処理 2 - interface Model -> DailyOrderNews
       var dailyOrderNews = orderInfo == null ? null : 
          DailyOrderNewsMapper.YahooToDailyOrderNews (
-            orderInfo, yahooShop.ToString(), _dbContext.Skuconversions);
+            orderInfo, yahooShop.ToString(), _dbContext);
 
+      // 梱包情報をセット
+      var mallShop = MallShopConverter.ToMallShop(yahooShop);
+      dailyOrderNews = DailyOrderNewsMapper.SetPackingColumns(dailyOrderNews, mallShop.ToString(), true, _dbContext);
+
+      UpdateDailyOrderNews(dailyOrderNews, mallShop);
+      return (orderInfo, dailyOrderNews);
+   }
+
+   // DailyOrderNews更新処理
+   private void UpdateDailyOrderNews(List<DailyOrderNews>? dailyOrderNews, MallShop mallShop)
+   {
       using (var transaction = _dbContext.Database.BeginTransaction())
       {
          try
          {
-            var mallShop = Enum.GetValues(typeof(MallShop)).Cast<MallShop>()
-               .FirstOrDefault(m => m.ToString() == yahooShop.ToString());
-
-            // 梱包情報をセット
-            dailyOrderNews = DailyOrderNewsMapper.SetPackingColumns(dailyOrderNews, mallShop.ToString(), _dbContext);
             // Remove 処理
-            RemoveDailyOrderNews(mallShop);
+            var targetOrderNews = _dbContext.DailyOrderNews
+               .Where(x => x.ShopCode == mallShop.ToString()).ToList();
+            if (targetOrderNews.Any())
+            {
+               _dbContext.DailyOrderNews.RemoveRange(targetOrderNews);
+               _dbContext.SaveChanges(); // SaveChangesでメモリ解放
+            }
+            // 更新処理
+            if (dailyOrderNews == null) return;
+            _dbContext.DailyOrderNews.AddRange(dailyOrderNews);
             _dbContext.SaveChanges(); // SaveChangesでメモリ解放
-            // DailyOrderNews更新処理
-            UpdateDailyOrderNews(dailyOrderNews);
-            _dbContext.SaveChanges(); // SaveChangesでメモリ解放
+
             transaction.Commit();
          }
          catch (Exception ex)
@@ -150,80 +122,5 @@ public class SetDailyOrderNews
             throw new Exception("FetchDailyOrderFromYahooでエラーが発生しました。", ex);
          }
       }
-      return (orderInfo, dailyOrderNews);
-   }
-
-   // DailyOrderNewsのMallShopデータを削除
-   private void RemoveDailyOrderNews(MallShop mallShop)
-   {
-      // DailyOrderNewsのデータを削除。
-      var targetOrderNews = _dbContext.DailyOrderNews
-         .Where(x => x.ShopCode == mallShop.ToString()).ToList();
-      if (targetOrderNews.Any())
-         _dbContext.DailyOrderNews.RemoveRange(targetOrderNews);
-   }
-
-   // DailyOrderNews更新処理
-   private void UpdateDailyOrderNews(List<DailyOrderNews>? dailyOrderNews)
-   {
-      if (dailyOrderNews == null) return;
-      _dbContext.DailyOrderNews.AddRange(dailyOrderNews);
-   }
-
-   /// <summary>
-   /// Yahoo注文一覧を取得（本番メソッド）
-   /// </summary>
-   public YahooOrderListResult GetYahooOrderList(YahooShop yahooShop)
-   {
-      var (_, yahooOrderListResult)
-         = GetYahooOrderListWithResponse(yahooShop);
-      return yahooOrderListResult;
-   }
-
-   /// <summary>
-   /// Yahoo注文一覧を取得。HTTPレスポンスも返す（テスト用）
-   /// </summary>
-   public (HttpResponseMessage, YahooOrderListResult)
-      GetYahooOrderListWithResponse(YahooShop yahooShop)
-   {
-      // APIリクエスト作成
-      var sellerId = ssAppDBHelper.GetShopToken(_dbContext, yahooShop.ToString()).SellerId;
-      var outputFields = string.Join(",", YahooOrderListRequestFactory.OutputFieldsDefault);
-      var yahooOrderListRequest = YahooOrderListRequestFactory.NewOrderRequest(null, null, 1, outputFields, sellerId);
-      // HTTP API実行
-      var (httpResponses, yahooOrderListResult) = _yahooOrderList.GetOrderSearchWithResponse(yahooOrderListRequest, yahooShop);
-      // DailyOrderNewsインターフェースモデルクラスへマッピング
-      return (httpResponses, yahooOrderListResult);
-   }
-
-   /// <summary>
-   /// Yahoo注文情報を取得（本番メソッド）
-   /// </summary>
-   public List<DailyOrderNewsYahoo>? GetYahooOrderInfo(List<string>? orderIds, YahooShop yahooShop)
-   {
-      // HTTPレスポンスを無視し、パース結果のみ返す
-      var (_, dailyOrderNews)
-         = GetYahooOrderInfoWithResponse(orderIds, yahooShop);
-      return dailyOrderNews;
-   }
-
-   /// <summary>
-   /// Yahoo注文情報を取得。HTTPレスポンスも返す（テスト用）
-   /// </summary>
-   public (List<HttpResponseMessage>?, List<DailyOrderNewsYahoo>?) 
-      GetYahooOrderInfoWithResponse(List<string>? orderIds, YahooShop yahooShop)
-   {
-      if (orderIds == null) return (null, null);
-      // APIリクエスト作成
-      var outputFields = DailyOrderNewsModelHelper.GetYahooOrderInfoFields();
-      
-      // GetOrderInfo 実行
-      var (httpResponses, orderInfos) 
-         = _yahooOrderInfo.GetOrderInfoWithResponse(orderIds, outputFields, yahooShop);
-
-      // マッピング処理 - Yahoo注文明細 (HttpResponseModel) -> DailyOrderNewsYahoo (interface Model)
-      var dailyOrderNews = DailyOrderNewsMapper.YahooOrderInfo(orderInfos, yahooShop);
-
-      return (httpResponses, dailyOrderNews);
    }
 }

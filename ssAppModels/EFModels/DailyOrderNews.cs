@@ -131,6 +131,22 @@ public partial class DailyOrderNews
     public string Skucode { get; set; }
 
     /// <summary>
+    /// SKUの正式な名称
+    /// </summary>
+    [Required]
+    [Column("SKUName")]
+    [StringLength(30)]
+    public string Skuname { get; set; }
+
+    /// <summary>
+    /// SKUの略称。簡易表示用
+    /// </summary>
+    [Required]
+    [Column("SKUAbbr")]
+    [StringLength(15)]
+    public string Skuabbr { get; set; }
+
+    /// <summary>
     /// 注文数量（3桁：999）
     /// </summary>
     [Column("OrderQTY")]
@@ -160,22 +176,34 @@ public partial class DailyOrderNews
     public int PackingLineTotal { get; set; }
 
     /// <summary>
-    /// 配送マスタの一意の配送コード
+    /// 注文行配送コード
+    /// </summary>
+    [StringLength(3)]
+    [Unicode(false)]
+    public string LineDeliveryCode { get; set; }
+
+    /// <summary>
+    /// 梱包配送コード
     /// </summary>
     [StringLength(3)]
     [Unicode(false)]
     public string DeliveryCode { get; set; }
 
     /// <summary>
-    /// 配送料
-    /// </summary>
-    public int? DeliveryFee { get; set; }
-
-    /// <summary>
     /// 梱包数量
     /// </summary>
     [Column("PackingQTY")]
     public int? PackingQty { get; set; }
+
+    /// <summary>
+    /// 配送伝票出力
+    /// </summary>
+    public bool? IsDeliveryLabel { get; set; }
+
+    /// <summary>
+    /// 配送料
+    /// </summary>
+    public int? DeliveryFee { get; set; }
 
     /// <summary>
     /// 注文商品コードをカンマ区切りで列挙。ソート用。商品毎にピッキングを行わせ効率を上げる

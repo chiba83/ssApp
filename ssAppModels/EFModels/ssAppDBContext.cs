@@ -62,9 +62,13 @@ public partial class ssAppDBContext : DbContext
             entity.Property(e => e.CustomField5).HasComment("拡張項目（ショップ毎の拡張項目）");
             entity.Property(e => e.DeliveryCode)
                 .IsFixedLength()
-                .HasComment("配送マスタの一意の配送コード");
+                .HasComment("梱包配送コード");
             entity.Property(e => e.DeliveryFee).HasComment("配送料");
+            entity.Property(e => e.IsDeliveryLabel).HasComment("配送伝票出力");
             entity.Property(e => e.LastOrderDate).HasComment("分割注文の最新注文日時");
+            entity.Property(e => e.LineDeliveryCode)
+                .IsFixedLength()
+                .HasComment("注文行配送コード");
             entity.Property(e => e.NormAddressLevel).HasComment("正規化レベル");
             entity.Property(e => e.OrderDate).HasComment("注文日時（楽天は注文確定日時）");
             entity.Property(e => e.OrderDetailTotal).HasComment("注文明細合計（税込）=オリジナル価格-クーポン値引き");
@@ -99,7 +103,9 @@ public partial class ssAppDBContext : DbContext
                 .HasComment("出荷の一意コード（yymmdd-xxx-999：出荷日-配送コード-連番）");
             entity.Property(e => e.ShipmentDate).HasComment("出荷日");
             entity.Property(e => e.ShopCode).HasComment("Shopマスタの一意のショップコード");
+            entity.Property(e => e.Skuabbr).HasComment("SKUの略称。簡易表示用");
             entity.Property(e => e.Skucode).HasComment("SKUの一意コード");
+            entity.Property(e => e.Skuname).HasComment("SKUの正式な名称");
             entity.Property(e => e.TrackingNumber).HasComment("追跡用の伝票番号（追跡番号は各社12桁）");
         });
 

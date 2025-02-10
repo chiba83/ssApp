@@ -4,11 +4,12 @@ using ssAppModels.ApiModels;
 using ssAppModels.AppModels;
 using ssAppModels.EFModels;
 using ssAppServices;
+using ssAppServices.Api;
 using ssAppServices.Apps;
 using ssAppTests.ssAppServices.Helpers;
 using NormalizeJapaneseAddressesNET;
 using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
+using ssAppServices.Api.Yahoo;
 
 namespace ssAppTests.ssAppServices.Apps;
 
@@ -18,6 +19,8 @@ public class DailyOrderNewsTests
    private ServiceProvider _serviceProvider;
    private ssAppDBContext _dbContext;
    private SetDailyOrderNews _setDailyOrderNews;
+   private YahooOrderList _yahooOrderList;
+   private YahooOrderInfo _yahooOrderInfo;
 
    [SetUp]
    public void SetUp()
@@ -32,6 +35,8 @@ public class DailyOrderNewsTests
 
       _dbContext = _serviceProvider.GetRequiredService<ssAppDBContext>();
       _setDailyOrderNews = _serviceProvider.GetRequiredService<SetDailyOrderNews>();
+      _yahooOrderList = _serviceProvider.GetRequiredService<YahooOrderList>();
+      _yahooOrderInfo = _serviceProvider.GetRequiredService<YahooOrderInfo>();
    }
 
    [TearDown]
@@ -41,6 +46,10 @@ public class DailyOrderNewsTests
       _serviceProvider?.Dispose();
    }
 
+   /// <summary>
+   /// 目的：Interface Modelへのマッピング処理をテストする。
+   /// HTTPレスポンスとDailyOrderNews（Interface Model）のフィールド値を比較チェックする。
+   /// </summary>
    [Test]
    public void T01_YahooOrderInfo_Success()
    {
@@ -51,14 +60,20 @@ public class DailyOrderNewsTests
 
          var (httpOrderList, orderList) = Run_YahooOrderSearch(shop);
          var orderIds = orderList.Search.OrderInfo.Select(x => x.Fields["OrderId"].ToString()).ToList();
-         if (orderIds == null  || orderIds.Count == 0)
+         if (orderIds == null || orderIds.Count == 0)
          {
             Console.WriteLine("注文情報がありません。");
             Console.WriteLine("--------------------------------------------------");
             continue;
          }
 
-         var (httpResponses, orderInfo) = _setDailyOrderNews.GetYahooOrderInfoWithResponse(orderIds, shop);
+         var outputFields = AppModelHelpers.GetDailyOrderNewsFields();
+
+         // GetOrderInfo 実行
+         var (httpResponses, orderInfos)
+            = _yahooOrderInfo.GetOrderInfoWithResponse(orderIds, outputFields, shop);
+         // マッピング処理 - Yahoo注文明細 (HttpResponseModel) -> interface Model)
+         var dailyOrderNews = DailyOrderNewsMapper.YahooOrderInfo(orderInfos, shop);
 
          // orderListのデータ件数とhttpOrderListの件数が一致すること。Response件数はGetOrderListTotalで取得
          var rowNumber = YahooApiHelpers.GetOrderListTotal(httpOrderList);
@@ -68,7 +83,7 @@ public class DailyOrderNewsTests
          // データ件数チェック
          // orderInfoのデータ件数とhttpResponsesの件数が一致すること。Response件数はGetOrderInfoItemCountで取得
          rowNumber = YahooApiHelpers.GetOrderInfoItemCount(httpResponses);
-         Assert.That(orderInfo.Count, Is.EqualTo(rowNumber), "orderInfoのデータ件数とhttpResponsesの件数が一致しません。");
+         Assert.That(dailyOrderNews.Count, Is.EqualTo(rowNumber), "orderInfoのデータ件数とhttpResponsesの件数が一致しません。");
          Console.WriteLine($"データ件数（注文Item数）： {rowNumber}");
          Console.WriteLine("--------------------------------------------------");
 
@@ -77,9 +92,9 @@ public class DailyOrderNewsTests
          // Yahoo注文情報のフィールド値を取得
          var fieldDefinitions = YahooOrderInfoFieldDefinitions.GetAllFields();
          var itemFieldList = YahooOrderInfoFieldDefinitions.Item.Keys.ToList();
-         var fields = DailyOrderNewsModelHelper.GetYahooOrderInfoFields();
+         var fields = AppModelHelpers.GetDailyOrderNewsFields();
 
-         foreach (var rec in orderInfo)
+         foreach (var rec in dailyOrderNews)
          {
             string lineId = rec.LineId.ToString();
             var itemValues = YahooApiHelpers.GetOrderInfoItemValues(httpResponses, rec.OrderId, lineId, fieldDefinitions);
@@ -110,6 +125,8 @@ public class DailyOrderNewsTests
       }
    }
 
+   /// <summary>
+   /// </summary>
    [Test]
    public void T02_FetchDailyOrderFromYahoo()
    {
@@ -152,6 +169,8 @@ public class DailyOrderNewsTests
       }
    }
 
+   /// <summary>
+   /// </summary>
    [Test]
    public void T03_FetchDailyOrderFromRakuten()
    {
@@ -178,7 +197,7 @@ public class DailyOrderNewsTests
 
          // DailyOrderNewsのデータ件数とDailyOrderNews.ShopCodeが"Rakuten"で始まる件数が一致すること
          var orderIds = _dbContext.DailyOrderNews.Where(x => x.ShopCode == rakutenShop.ToString())
-               .GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
+            .GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
          Assert.That(orderNumbers.Count, Is.EqualTo(orderIds.Count), $"DailyOrderNews {rakutenShop.ToString()} のデータ件数とDailyOrderNews.ShopCodeの件数が一致しません。");
          Assert.That(orderNumbers, Is.EquivalentTo(orderIds), "DailyOrderNewsのOrderNumberとSerchOrderで取得したOrderNumberが一致しない。");
 
@@ -193,9 +212,12 @@ public class DailyOrderNewsTests
       }
    }
 
+   /// <summary>
+   /// 住所の正規化処理をテストする。
+   /// </summary>
    [Test]
    public void T04_NormalizeAddressTest()
-   { 
+   {
       var config = new Config();
       config.JapaneseAddressesApi = @"C:\ssApp\data\full_normalize_data.json";
       int row = 1;
@@ -216,7 +238,7 @@ public class DailyOrderNewsTests
          Console.WriteLine("After : " + afterAddress);
          if (result.level == 3)
          {
-            var(n,b) = SplitAddress(result.addr);
+            var (n, b) = SplitAddress(result.addr);
             Console.WriteLine(n + " ： " + b);
          }
          var (n1, b1) = SplitAddress(beforeAddress);
@@ -225,6 +247,9 @@ public class DailyOrderNewsTests
       }
    }
 
+   /// <summary>
+   /// 発送方法コードと梱包数を取得するテスト
+   /// </summary>
    [Test]
    public void T05_GetDeliveryCodeTest()
    {
@@ -329,7 +354,7 @@ public class DailyOrderNewsTests
       int row = 1;
       foreach (var scenario in testScenarios)
       {
-         var(actualDeliveryCode, actualPackingQty) = DailyOrderNewsMapper.GetDeliveryCode(scenario.Items, RakutenShop.Rakuten_ENZO.ToString(), _dbContext);
+         var (actualDeliveryCode, actualPackingQty) = DailyOrderNewsMapper.GetDeliveryCode(scenario.Items, RakutenShop.Rakuten_ENZO.ToString(), _dbContext);
          Console.WriteLine($"Test Case #{row++}: {string.Join(", ", scenario.Items.Select(i => $"{i.ProductCode} ({i.OrderQty})"))}");
          Console.WriteLine($"Expected: {scenario.ExpectedDeliveryCode}, {scenario.ExpectedPackingQty}");
          Console.WriteLine($"Actual: {actualDeliveryCode}, {actualPackingQty}");
@@ -337,7 +362,30 @@ public class DailyOrderNewsTests
          Assert.That(actualDeliveryCode, Is.EqualTo(scenario.ExpectedDeliveryCode));
          Assert.That(actualPackingQty, Is.EqualTo(scenario.ExpectedPackingQty));
       }
-    }
+   }
+
+   /// <summary>
+   /// 発送商品名の重複文字列置換処理をテストする。
+   /// </summary>
+   [Test]
+   public void T06_ReplaceDuplicatesTest()
+   {
+      string testString = "靴下S黒、靴下L灰、靴下S白、替えブラシEB20、替えブラシEB50、USB-C、靴下L3色、ベネチアン40cm、アズキ、スクリュー、ベネチアン50cm";
+      string expectedOutput = "靴下S黒、靴下L灰、S白、替えブラシEB20、EB50、USB-C、L3色、ベネチアン40cm、アズキ、スクリュー、50cm";
+      string result = DailyOrderNewsMapper.ReplaceDuplicates(testString);
+      Console.WriteLine(testString);
+      Console.WriteLine(expectedOutput);
+      Console.WriteLine(result);
+      Assert.That(result, Is.EqualTo(expectedOutput));
+   }
+
+   /// <summary>
+   /// 発送商品名の重複文字列置換処理をテストする。
+   /// </summary>
+   [Test]
+   public void T07_SplitAndConcatProductNamesTest()
+   { 
+   }
 
    private static (string? HouseNumber, string? BuildingName) SplitAddress(string input)
    {
@@ -356,7 +404,13 @@ public class DailyOrderNewsTests
 
    private (HttpResponseMessage, YahooOrderListResult) Run_YahooOrderSearch(YahooShop yahooShop)
    {
-      var (httpResponses, orderList) = _setDailyOrderNews.GetYahooOrderListWithResponse(yahooShop);
+      // APIリクエスト作成
+      var sellerId = ApiHelpers.GetShopToken(_dbContext, yahooShop.ToString()).SellerId;
+      var outputFields = string.Join(",", YahooOrderListRequestFactory.OutputFieldsDefault);
+      var yahooOrderListRequest = YahooOrderListRequestFactory.NewOrderRequest(null, null, 1, outputFields, sellerId);
+      // HTTP API実行
+      var (httpResponses, orderList) = _yahooOrderList.GetOrderSearchWithResponse(yahooOrderListRequest, yahooShop);
+
       int rowNumber = 1;
       foreach (var orderId in orderList.Search.OrderInfo.Select(x => x.Fields["OrderId"].ToString()))
       {

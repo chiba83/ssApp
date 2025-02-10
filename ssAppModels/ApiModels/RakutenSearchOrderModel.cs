@@ -60,7 +60,8 @@ public class RakutenSearchOrderRequest
    [JsonProperty("overseasFlag")]
    public int? OverseasFlag { get; set; }              // 海外カゴ注文フラグ
    [JsonProperty("PaginationRequestModel")]
-   public RakutenSearchOrderPaginationRequestModel? PaginationRequestModel { get; set; } // ページングリクエストモデル
+   public RakutenSearchOrderPaginationRequestModel? 
+      PaginationRequestModel { get; set; }             // ページングリクエストモデル
    [JsonProperty("oneDayOperationFlag")]
    public int? OneDayOperationFlag { get; set; }       // 注文当日出荷フラグ
 }
@@ -135,7 +136,7 @@ public class RakutenSearchOrderRequestFactory
       );
    }
    // 発送処理中リクエスト
-   public static RakutenSearchOrderRequest ShippingProcessingRequest(
+   public static RakutenSearchOrderRequest ShippingProcessRequest(
       DateTime? startDatetime, DateTime? endDatetime, int? requestPage)
    {
       return CreateRequest(

@@ -106,7 +106,7 @@ namespace ssAppServices.Api.Yahoo
          // Validation Check
          ApiHelpers.AreAllFieldsValid(outputFields, YahooOrderListFieldDefinitions.FieldDefinitions);
          // ShopToken 情報の取得
-         var shopToken = ssAppDBHelper.GetShopToken(_dbContext, shopCode.ToString());
+         var shopToken = ApiHelpers.GetShopToken(_dbContext, shopCode.ToString());
          // リクエストオブジェクトの作成
          var requestMessage = SetHttpRequest(yahooOrderListRequest, shopToken, shopCode);
          // PollyContext を生成

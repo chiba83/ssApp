@@ -37,18 +37,18 @@ catch (Exception ex)
 try
 {
    builder.Services.AddHangfire(config => config
-       .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
-       .UseSimpleAssemblyNameTypeSerializer()
-       .UseRecommendedSerializerSettings()
-       .UseSqlServerStorage(builder.Configuration.GetConnectionString("ssAppDBContext"), new SqlServerStorageOptions
-       {
-          CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-          SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-          QueuePollInterval = TimeSpan.Zero,
-          UseRecommendedIsolationLevel = true,
-          DisableGlobalLocks = true
-       })
-       .WithJobExpirationTimeout(TimeSpan.FromDays(1))
+      .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+      .UseSimpleAssemblyNameTypeSerializer()
+      .UseRecommendedSerializerSettings()
+      .UseSqlServerStorage(builder.Configuration.GetConnectionString("ssAppDBContext"), new SqlServerStorageOptions
+      {
+         CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+         SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+         QueuePollInterval = TimeSpan.Zero,
+         UseRecommendedIsolationLevel = true,
+         DisableGlobalLocks = true
+      })
+      .WithJobExpirationTimeout(TimeSpan.FromDays(1))
    );
 
    builder.Services.AddProjectDependencies(builder.Configuration);
