@@ -21,11 +21,15 @@ public class DailyOrderNewsTests
    private SetDailyOrderNews _setDailyOrderNews;
    private YahooOrderList _yahooOrderList;
    private YahooOrderInfo _yahooOrderInfo;
-   private readonly DateTime startDT = new(2025, 3, 4, 0, 0, 0);
-   private readonly DateTime endDT = new(2025, 3, 5, 23, 59, 59);
+   private readonly DateTime startDT = new(2025, 3, 13, 9, 0, 0);
+   private readonly DateTime endDT = new(2025, 3, 23, 11, 59, 59);
    //private readonly OrderStatus orderStatus = OrderStatus.NewOrder;
-   private readonly OrderStatus orderStatus = OrderStatus.Packing;
-   //private readonly OrderStatus orderStatus = OrderStatus.Shipped;
+   //private readonly OrderStatus orderStatus = OrderStatus.Packing;
+   private readonly OrderStatus orderStatus = OrderStatus.Shipped;
+   //private readonly UpdateMode updateMode = UpdateMode.Insert;
+   private readonly UpdateMode updateMode = UpdateMode.Replace;
+   //private readonly bool normalizeAddresses = true;
+   private readonly bool normalizeAddresses = false;
 
 
    [SetUp]
@@ -146,13 +150,13 @@ public class DailyOrderNewsTests
          switch (orderStatus)
          {
             case OrderStatus.NewOrder:
-               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.NewOrder, null, null, UpdateMode.Replace);
+               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.NewOrder, null, null, normalizeAddresses, updateMode);
                break;
             case OrderStatus.Packing:
-               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.Packing, null, null, UpdateMode.Replace);
+               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.Packing, null, null, normalizeAddresses, updateMode);
                break;
             case OrderStatus.Shipped:
-               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.Shipped, startDT, endDT, UpdateMode.Replace);
+               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.Shipped, startDT, endDT, normalizeAddresses, updateMode);
                break;
          }
          if (DON?.Any() == false || DONY?.Any() == false)
@@ -204,13 +208,13 @@ public class DailyOrderNewsTests
          switch (orderStatus)
          {
             case OrderStatus.NewOrder:
-               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.NewOrder, null, null, UpdateMode.Replace);
+               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.NewOrder, null, null, normalizeAddresses, updateMode);
                break;
             case OrderStatus.Packing:
-               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.Packing, null, null, UpdateMode.Replace);
+               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.Packing, null, null, normalizeAddresses, updateMode);
                break;
             case OrderStatus.Shipped:
-               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.Shipped, startDT, endDT, UpdateMode.Replace);
+               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.Shipped, startDT, endDT, normalizeAddresses, updateMode);
                break;
          }
          // 注文情報が取得できない場合は処理を終了
@@ -410,14 +414,6 @@ public class DailyOrderNewsTests
       Console.WriteLine(expectedOutput);
       Console.WriteLine(result);
       Assert.That(result, Is.EqualTo(expectedOutput));
-   }
-
-   /// <summary>
-   /// 発送商品名の重複文字列置換処理をテストする。
-   /// </summary>
-   [Test]
-   public void T07_SplitAndConcatProductNamesTest()
-   { 
    }
 
    private static (string? HouseNumber, string? BuildingName) SplitAddress(string input)

@@ -5,7 +5,6 @@ using ssAppServices.Apps;
 using ssAppServices.Extensions;
 using ssAppModels.ApiModels;
 using Hangfire.Server;
-using Hangfire.States;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,7 +83,7 @@ try
    // Add the recurring jobs
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
       "NewOrders - Yahoo_LARAL",
-      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL, OrderStatus.NewOrder, null, null, UpdateMode.Replace),
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL, OrderStatus.NewOrder, null, null, true, UpdateMode.Replace),
       "0,30 5-23 * * *",
       new RecurringJobOptions
       {
@@ -93,7 +92,7 @@ try
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
       "NewOrders - Yahoo_Yours",
-      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours, OrderStatus.NewOrder, null, null, UpdateMode.Replace),
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours, OrderStatus.NewOrder, null, null, true, UpdateMode.Replace),
       "0,30 5-23 * * *",
       new RecurringJobOptions
       {
@@ -102,7 +101,7 @@ try
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
       "NewOrders - Rakuten_ENZO",
-      x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO, OrderStatus.NewOrder, null, null, UpdateMode.Replace),
+      x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO, OrderStatus.NewOrder, null, null, true, UpdateMode.Replace),
       "0,30 5-23 * * *",
       new RecurringJobOptions
       {
@@ -111,17 +110,17 @@ try
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
       "Packing - Yahoo_LARAL",
-      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL, OrderStatus.Packing, null, null, UpdateMode.Replace),
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL, OrderStatus.Packing, null, null, true, UpdateMode.Replace),
       Cron.Never // スケジュール実行なし（手動専用）
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
       "Packing - Yahoo_Yours",
-      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours, OrderStatus.Packing, null, null, UpdateMode.Replace),
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours, OrderStatus.Packing, null, null, true, UpdateMode.Replace),
       Cron.Never // スケジュール実行なし（手動専用）
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
       "Packing - Rakuten_ENZO",
-      x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO, OrderStatus.Packing, null, null, UpdateMode.Replace),
+      x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO, OrderStatus.Packing, null, null, true, UpdateMode.Replace),
       Cron.Never // スケジュール実行なし（手動専用）
    );
 

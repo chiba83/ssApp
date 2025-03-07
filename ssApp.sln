@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssAppJob", "ssAppJob\ssAppJ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NormalizeJapaneseAddressesNET", "Libraries\NormalizeJapaneseAddressesNET-master\NormalizeJapaneseAddressesNET\NormalizeJapaneseAddressesNET.csproj", "{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssAppBlazorWeb", "ssAppBlazorWeb\ssAppBlazorWeb.csproj", "{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,8 +99,23 @@ Global
 		{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}.Release|ARM64.Build.0 = Release|Any CPU
 		{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}.Release|x64.ActiveCfg = Release|x64
 		{B33644F6-39FE-445A-9BA9-B1C7F7D79C4E}.Release|x64.Build.0 = Release|x64
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Debug|x64.Build.0 = Debug|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Release|ARM64.Build.0 = Release|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Release|x64.ActiveCfg = Release|Any CPU
+		{7D84A3C0-1DFA-C1D0-4318-7080B9EC3299}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F482749E-83A8-4B73-8A6D-76E8A364BCBE}
 	EndGlobalSection
 EndGlobal
