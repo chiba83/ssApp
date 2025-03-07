@@ -283,9 +283,20 @@ public partial class DailyOrderNews
     /// <summary>
     /// 追跡用の伝票番号（追跡番号は各社12桁）
     /// </summary>
-    [StringLength(15)]
+    [StringLength(300)]
     [Unicode(false)]
     public string TrackingNumber { get; set; }
+
+    /// <summary>
+    /// 検品完了
+    /// </summary>
+    public bool IsInspected { get; set; }
+
+    /// <summary>
+    /// 検品担当者コード
+    /// </summary>
+    [StringLength(15)]
+    public string OperatorCode { get; set; }
 
     /// <summary>
     /// 消費税率

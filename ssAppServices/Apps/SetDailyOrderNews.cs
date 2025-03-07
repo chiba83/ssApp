@@ -4,7 +4,6 @@ using ssAppModels.ApiModels;
 using ssAppModels.AppModels;
 using ssAppServices.Api.Yahoo;
 using ssAppServices.Api.Rakuten;
-using Azure;
 
 // 【 処理概要 】
 // 各モールショップの新規注文（出荷対象注文）を取得し、DailyOrderNewsに保存する。
@@ -35,14 +34,15 @@ public class SetDailyOrderNews(
    /// <param name="status">対象ステータス</param>
    /// <param name="startDate">開始日</param>
    /// <param name="endDate">終了日</param>
+   /// <param name="normalizeAddresses">住所正規化実行フラグ</param>
    /// <param name="updateMode">DailyOrderNews更新モード</param>
    /// <returns>
    /// 注文番号リスト：テスト用。
    /// 注文詳細情報：テスト用。
    /// </returns>
    public (List<string>?, RakutenGetOrderResponse?) FetchDailyOrderFromRakuten(
-      RakutenShop rakutenShop, OrderStatus status, 
-      DateTime? startDate, DateTime? endDate, UpdateMode updateMode)
+      RakutenShop rakutenShop, OrderStatus status, DateTime? startDate, 
+      DateTime? endDate, bool normalizeAddresses, UpdateMode updateMode)
    {
       // リクエストに対する全オーダー明細を取得します。（上限2000件）
       var getOrderResponse = _rakutenApiExecute
@@ -55,7 +55,7 @@ public class SetDailyOrderNews(
 
       // 梱包情報をセット
       var mallShop = MallShopConverter.ToMallShop(rakutenShop);
-      dailyOrderNews = DailyOrderNewsMapper.SetPackingColumns(dailyOrderNews, mallShop.ToString(), true, _dbContext);
+      dailyOrderNews = DailyOrderNewsMapper.SetPackingColumns(dailyOrderNews, mallShop.ToString(), normalizeAddresses, _dbContext);
 
       // テーブル更新処理
       UpdateDailyOrderNews(dailyOrderNews, mallShop, status, updateMode);
@@ -78,8 +78,8 @@ public class SetDailyOrderNews(
    /// 注文詳細情報
    /// </returns>
    public (List<DailyOrderNewsYahoo>?, List<DailyOrderNews>?) FetchDailyOrderFromYahoo(
-      YahooShop yahooShop, OrderStatus status,
-      DateTime? startDate, DateTime? endDate, UpdateMode updateMode)
+      YahooShop yahooShop, OrderStatus status, DateTime? startDate, 
+      DateTime? endDate, bool normalizeAddresses, UpdateMode updateMode)
    {
       // リクエストに対する全オーダー明細を取得します。（上限2000件）
       var getOrderResponse = _YahooApiExecute.GetYahooOrders(
@@ -94,7 +94,7 @@ public class SetDailyOrderNews(
 
       // 梱包情報をセット
       var mallShop = MallShopConverter.ToMallShop(yahooShop);
-      dailyOrderNews = DailyOrderNewsMapper.SetPackingColumns(dailyOrderNews, mallShop.ToString(), true, _dbContext);
+      dailyOrderNews = DailyOrderNewsMapper.SetPackingColumns(dailyOrderNews, mallShop.ToString(), normalizeAddresses, _dbContext);
 
       UpdateDailyOrderNews(dailyOrderNews, mallShop, status, updateMode);
       return (orderInfo, dailyOrderNews);

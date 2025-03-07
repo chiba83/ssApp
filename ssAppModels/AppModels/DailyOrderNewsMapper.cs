@@ -19,6 +19,7 @@ public static class DailyOrderNewsMapper
       { "靴下S", "S" }, { "靴下L", "L" }, { "替えブラシ", "" }, { "USB-C", "" },
       { "ライト", "" }, { "ベネチアン", "" }, { "アズキ", "" }, { "スクリュー", "" },
    };
+
    /// <summary>
    /// 配送伝票用プロパティ。適用枠の記載文字数制限対応。
    /// 伝票の適用枠に注文IDを記載するが文字数制限数に対応するためショップ毎のIDプレフィックス文字数を保持する。
@@ -38,6 +39,10 @@ public static class DailyOrderNewsMapper
       // Rakuten_ENZO：413247-20250205-xxxxxxxxxx
       { "Yahoo_LARAL", 7 }, { "Yahoo_Yours", 9 }, { "Rakuten_ENZO", 16 },
    };
+   private static readonly Dictionary<string, string> PackingIdPrefix = new()
+   {
+      { "Yahoo_LARAL", "YL" }, { "Yahoo_Yours", "YY" }, { "Rakuten_ENZO", "RE" },
+   };
 
    /// <summary>
    /// 梱包グループ（PackingGroup）の関連項目を設定する。
@@ -53,6 +58,9 @@ public static class DailyOrderNewsMapper
    {
       if (dailyOrderNews?.Any() != true) return [];
 
+      var startIndex = ShopOrderPrefixSize[shopCode];
+      var packingIdPrefix = PackingIdPrefix[shopCode] + DateTime.Now.ToString("yyMMddHHmm");
+
       // PackingIdごとにグループ化して処理
       return dailyOrderNews
       .GroupBy(
@@ -65,7 +73,7 @@ public static class DailyOrderNewsMapper
          var normalize = normalizeAddresses ? NormalizeJapaneseAddresses.Normalize(originalAddress).Result : null;
          var (addressNumber, building) = normalize?.level == 3 ? SplitAddress(normalize.addr) : ("","");
          var lastOrderDate = items.Max(x => x.OrderDate);
-         var packingId = $"{shopCode}-{(groupIndex + 1):D4}0";
+         var packingId = $"{packingIdPrefix}-{items.FirstOrDefault()?.OrderId.Substring(startIndex)}";
          var distinctOrderIdCount = items.Select(x => x.OrderId).Distinct().Count();
          var packingLineTotal = items.Count;
          var packingSort = string.Join(",", items.OrderBy(x => x.Skucode)
@@ -509,8 +517,7 @@ public static class DailyOrderNewsMapper
    // Class のプロパティを設定する（動的Property対応）
    private static T SetProperty<T>(T target, string propertyName, object value) where T : class
    {
-      if (target == null)
-         throw new ArgumentNullException(nameof(target));
+      ArgumentNullException.ThrowIfNull(target);
 
       var property = typeof(T).GetProperty(propertyName) ?? throw new ArgumentException($"Property '{propertyName}' not found on type '{typeof(T)}'.");
 

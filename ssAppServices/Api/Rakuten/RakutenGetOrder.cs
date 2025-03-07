@@ -53,8 +53,9 @@ public class RakutenGetOrder
          return null;
 
       var getOrderResponse = new RakutenGetOrderResponse();
+      int totalPages = (int)Math.Ceiling(searchOrder.OrderNumberList.Count / 100.0);
 
-      for (int page = 1; page <= searchOrder.PaginationResponse!.TotalPages; page++)
+      for (int page = 1; page <= totalPages; page++)
       {
          // GetOrder リクエストパラメータ
          var getOrderParameter = RakutenGetOrderRequestFactory.LatestVersionRequest(

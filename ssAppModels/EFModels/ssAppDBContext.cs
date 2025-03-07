@@ -66,6 +66,7 @@ public partial class ssAppDBContext : DbContext
             entity.Property(e => e.DeliveryFee).HasComment("配送料");
             entity.Property(e => e.DeliveryName).HasComment("配送名");
             entity.Property(e => e.IsDeliveryLabel).HasComment("配送伝票出力");
+            entity.Property(e => e.IsInspected).HasComment("検品完了");
             entity.Property(e => e.LabelAddress1).HasComment("配送伝票の届け先住所１");
             entity.Property(e => e.LabelAddress2).HasComment("配送伝票の届け先住所２");
             entity.Property(e => e.LabelAddress3).HasComment("配送伝票の届け先住所３");
@@ -74,6 +75,7 @@ public partial class ssAppDBContext : DbContext
                 .IsFixedLength()
                 .HasComment("注文行配送コード");
             entity.Property(e => e.NormAddressLevel).HasComment("正規化レベル");
+            entity.Property(e => e.OperatorCode).HasComment("検品担当者コード");
             entity.Property(e => e.OrderDate).HasComment("注文日時（楽天は注文確定日時）");
             entity.Property(e => e.OrderDetailTotal).HasComment("注文明細合計（税込）=オリジナル価格-クーポン値引き");
             entity.Property(e => e.OrderId).HasComment("注文の一意コード（各モールの注文ID）");
