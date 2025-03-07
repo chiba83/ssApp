@@ -36,6 +36,23 @@ public enum GrantType
    refresh_token
 }
 
+// 注文ステータスを管理する列挙型
+public enum OrderStatus
+{
+   NewOrder,      // 新規注文 (処理待ち)　Y・R共通
+   Packing,       // 梱包処理中 Y・R共通
+   Shipping,      // 出荷処理中（出荷日・追跡番号設定） Yのみ
+   Shipped,       // 出荷完了（配送完了） Y・R共通
+   Present,       // レビュープレゼント対象期間の注文情報 Y・R共通
+}
+
+// テーブル更新モードを管理する列挙型
+public enum UpdateMode
+{
+   Insert,   // 新規追加
+   Replace   // 既存データを削除して新規追加
+}
+
 public static class MallShopConverter
 {
    /// <summary>

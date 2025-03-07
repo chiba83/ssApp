@@ -10,7 +10,7 @@ using Hangfire.States;
 var builder = WebApplication.CreateBuilder(args);
 
 // ログ出力の共通メソッド
-void Log(string message)
+static void Log(string message)
 {
    var logPath = "C:\\inetpub\\logs\\hangfire\\hangfire_log.txt";
    File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}\n");
@@ -73,7 +73,7 @@ app.UseRouting();
 // Hangfire Dashboard configuration
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
-   Authorization = new[] { new AllowAllAuthorizationFilter() }
+   Authorization = [new AllowAllAuthorizationFilter()]
 });
 
 // Add event for job performance logging
@@ -83,8 +83,8 @@ try
 {
    // Add the recurring jobs
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
-      "DailyOrderNews - Yahoo_LARAL",
-      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL),
+      "NewOrders - Yahoo_LARAL",
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL, OrderStatus.NewOrder, null, null, UpdateMode.Replace),
       "0,30 5-23 * * *",
       new RecurringJobOptions
       {
@@ -92,8 +92,8 @@ try
       }
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
-      "DailyOrderNews - Yahoo_Yours",
-      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours),
+      "NewOrders - Yahoo_Yours",
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours, OrderStatus.NewOrder, null, null, UpdateMode.Replace),
       "0,30 5-23 * * *",
       new RecurringJobOptions
       {
@@ -101,13 +101,28 @@ try
       }
    );
    RecurringJob.AddOrUpdate<SetDailyOrderNews>(
-      "DailyOrderNews - Rakuten_ENZO",
-      x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO),
+      "NewOrders - Rakuten_ENZO",
+      x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO, OrderStatus.NewOrder, null, null, UpdateMode.Replace),
       "0,30 5-23 * * *",
       new RecurringJobOptions
       {
          TimeZone = TimeZoneInfo.Local
       }
+   );
+   RecurringJob.AddOrUpdate<SetDailyOrderNews>(
+      "Packing - Yahoo_LARAL",
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_LARAL, OrderStatus.Packing, null, null, UpdateMode.Replace),
+      Cron.Never // スケジュール実行なし（手動専用）
+   );
+   RecurringJob.AddOrUpdate<SetDailyOrderNews>(
+      "Packing - Yahoo_Yours",
+      x => x.FetchDailyOrderFromYahoo(YahooShop.Yahoo_Yours, OrderStatus.Packing, null, null, UpdateMode.Replace),
+      Cron.Never // スケジュール実行なし（手動専用）
+   );
+   RecurringJob.AddOrUpdate<SetDailyOrderNews>(
+      "Packing - Rakuten_ENZO",
+      x => x.FetchDailyOrderFromRakuten(RakutenShop.Rakuten_ENZO, OrderStatus.Packing, null, null, UpdateMode.Replace),
+      Cron.Never // スケジュール実行なし（手動専用）
    );
 
    Log("Jobs configured successfully.");
@@ -128,14 +143,9 @@ app.MapGet("/", async context =>
 app.Run();
 
 // Filter for logging job performance
-public class LogJobFilter : JobFilterAttribute, IServerFilter
+public class LogJobFilter(Action<string> log) : JobFilterAttribute, IServerFilter
 {
-   private readonly Action<string> _log;
-
-   public LogJobFilter(Action<string> log)
-   {
-      _log = log;
-   }
+   private readonly Action<string> _log = log;
 
    public void OnPerforming(PerformingContext context)
    {

@@ -1,4 +1,4 @@
-﻿#pragma warning disable  CS8620
+﻿#pragma warning disable  CS8604
 using Microsoft.EntityFrameworkCore;
 using NormalizeJapaneseAddressesNET;
 using ssAppModels.ApiModels;
@@ -14,7 +14,7 @@ public static class DailyOrderNewsMapper
    /// Key：検索文字列、Value：置換後の文字列
    /// 伝票の内容品文字数制限対応のため繰り返し出現する文字列を短く置換する。
    /// </summary>
-   private static readonly Dictionary<string, string> ReplacementMap = new Dictionary<string, string>
+   private static readonly Dictionary<string, string> ReplacementMap = new()
    {
       { "靴下S", "S" }, { "靴下L", "L" }, { "替えブラシ", "" }, { "USB-C", "" },
       { "ライト", "" }, { "ベネチアン", "" }, { "アズキ", "" }, { "スクリュー", "" },
@@ -23,7 +23,7 @@ public static class DailyOrderNewsMapper
    /// 配送伝票用プロパティ。適用枠の記載文字数制限対応。
    /// 伝票の適用枠に注文IDを記載するが文字数制限数に対応するためショップ毎のIDプレフィックス文字数を保持する。
    /// </summary>
-   private static readonly Dictionary<string, int> LabelItemCount = new Dictionary<string, int>
+   private static readonly Dictionary<string, int> LabelItemCount = new()
    {
       { "003", 2 }, { "020", 1 }, { "092", 2 },
    };
@@ -31,7 +31,7 @@ public static class DailyOrderNewsMapper
    /// 配送伝票用プロパティ。内容品の記載枠数。
    /// 伝票の内容品枠数を配送会社毎に固定変数として保持する。
    /// </summary>
-   private static readonly Dictionary<string, int> ShopOrderPrefixSize = new Dictionary<string, int>
+   private static readonly Dictionary<string, int> ShopOrderPrefixSize = new()
    {
       // Yahoo_LARAL ：axis-j-xxxxxxxx
       // Yahoo_Yours ：yours-ja-xxxxxxxx
@@ -39,11 +39,19 @@ public static class DailyOrderNewsMapper
       { "Yahoo_LARAL", 7 }, { "Yahoo_Yours", 9 }, { "Rakuten_ENZO", 16 },
    };
 
+   /// <summary>
+   /// 梱包グループ（PackingGroup）の関連項目を設定する。
+   /// </summary>
+   /// <param name="dailyOrderNews"></param>
+   /// <param name="shopCode"></param>
+   /// <param name="normalizeAddresses"></param>
+   /// <param name="_dbContext"></param>
+   /// <returns></returns>
    public static List<DailyOrderNews> SetPackingColumns(
       List<DailyOrderNews>? dailyOrderNews, string shopCode, 
       bool normalizeAddresses, ssAppDBContext _dbContext)
    {
-      if (dailyOrderNews?.Any() != true) return new List<DailyOrderNews>();
+      if (dailyOrderNews?.Any() != true) return [];
 
       // PackingIdごとにグループ化して処理
       return dailyOrderNews
@@ -80,7 +88,7 @@ public static class DailyOrderNewsMapper
                item.ShipAddress1 = $"{normalize.town}{addressNumber}" ;
                item.ShipAddress2 = building;
             }
-            item.NormAddressLevel = normalize != null ? normalize.level : null;
+            item.NormAddressLevel = normalize?.level;
             item.PackingId = packingId;
             item.PackingOrderIdCount = distinctOrderIdCount;
             item.PackingLineId = itemIndex + 1;
@@ -88,19 +96,22 @@ public static class DailyOrderNewsMapper
             item.PackingSort = packingSort;
             item.DeliveryFee = (int?)deliveryFee[itemIndex];
             item.ShipNotes = shipNotes;
-            var (code, qty) = GetDeliveryCode(new List<DailyOrderNews> { item }, shopCode, _dbContext);
+            var (code, qty) = GetDeliveryCode([item], shopCode, _dbContext);
             item.LineDeliveryCode = code;
-            if (packingLineTotal == itemIndex + 1)
+            item.PackingQty = qty;
+            item.IsDeliveryLabel = false;
+
+            // PackingId + OrderId ごとに最終行を特定
+            var isLastLineInOrder = itemIndex == items.LastIndexOf(items.LastOrDefault(x => x.OrderId == item.OrderId));
+            if (isLastLineInOrder)
             {
                item.DeliveryCode = deliveryCode;
+               item.DeliveryName = _dbContext.Deliveries
+                  .FirstOrDefault(x => x.DeliveryCode == deliveryCode)?.DeliveryName;
                item.PackingQty = PackingQTY;
-               item.IsDeliveryLabel = true;
+               if (packingLineTotal == itemIndex + 1) item.IsDeliveryLabel = true;
                item.PackingCont1 = packingCont1;
                item.PackingCont2 = packingCont2;
-            } else
-            {
-               item.PackingQty = qty;
-               item.IsDeliveryLabel = false;
             }
             return item;
          });
@@ -114,7 +125,7 @@ public static class DailyOrderNewsMapper
       if (match.Success)
       {
          string houseNumber = match.Groups[1].Value.Trim(); // 番地
-         string buildingName = match.Groups[2].Success ? match.Groups[2].Value.Trim() : null; // 建物名（オプション）
+         string? buildingName = match.Groups[2].Success ? match.Groups[2].Value.Trim() : null; // 建物名（オプション）
          return (houseNumber, buildingName);
       }
       // 分割できなかった場合、全体を番地として扱い、建物名は null
@@ -127,7 +138,7 @@ public static class DailyOrderNewsMapper
    public static List<decimal> DistributeAmount(string deliveryCode, int PackingQTY, int packingLineTotal, ssAppDBContext _dbContext)
    {
       // 例外処理：packingLineTotal が 0 以下の場合、空のリストを返す
-      if (packingLineTotal <= 0) return new List<decimal>();
+      if (packingLineTotal <= 0) return [];
 
       // 合計金額計算
       var deliveryFee = _dbContext.Deliveries.FirstOrDefault(x => x.DeliveryCode == deliveryCode)?.DeliveryFee ?? 0;
@@ -200,7 +211,7 @@ public static class DailyOrderNewsMapper
    /// </summary>
    public static string ReplaceDuplicates(string input)
    {
-      Dictionary<string, bool> seen = new Dictionary<string, bool>();
+      Dictionary<string, bool> seen = [];
       string result = input;
 
       foreach (var key in ReplacementMap.Keys)
@@ -293,14 +304,20 @@ public static class DailyOrderNewsMapper
       return (deliveryCode, packingQty);
    }
 
-   // マッピング処理（ HTTPResponseModel -> DB Model ）
-   // Rakuten注文明細 (RakutenGetOrderResponse) -> DailyOrderNews
+   /// <summary>
+   /// マッピング処理（ HTTPResponseModel -> DB Model ）
+   /// Rakuten注文明細 (RakutenGetOrderResponse) -> DailyOrderNews
+   /// </summary>
+   /// <param name="rakutenGetOrderResponse">HTTPResponseModel</param>
+   /// <param name="rakutenShop">楽天ショップ</param>
+   /// <param name="status">注文ステータス</param>
+   /// <param name="_dbContext">DBコンテキスト</param>
+   /// <returns></returns>
    public static List<DailyOrderNews> RakutenToDailyOrderNews(
-      RakutenGetOrderResponse rakutenGetOrderResponse,
-      RakutenShop rakutenShop,
-      ssAppDBContext _dbContext)
+      RakutenGetOrderResponse rakutenGetOrderResponse, RakutenShop rakutenShop,
+      OrderStatus status, ssAppDBContext _dbContext)
    {
-      if (rakutenGetOrderResponse.OrderModelList?.Any() != true) return new List<DailyOrderNews>();
+      if (rakutenGetOrderResponse.OrderModelList?.Any() != true) return [];
 
       return rakutenGetOrderResponse.OrderModelList.SelectMany(order => order.PackageModelList
          .SelectMany(package => package.ItemModelList
@@ -319,6 +336,7 @@ public static class DailyOrderNewsMapper
                var productName = _dbContext.ProductSkus.FirstOrDefault(x => x.Skucode == skuCode);
                return new DailyOrderNews
                {
+                  Status = status.ToString(),
                   ShopCode = rakutenShop.ToString(),
                   ShipZip = sender.ZipCode1 + sender.ZipCode2,
                   ShipPrefecture = sender.Prefecture,
@@ -352,14 +370,14 @@ public static class DailyOrderNewsMapper
    public static List<DailyOrderNewsYahoo> YahooOrderInfo(List<YahooOrderInfoResponse> responses, YahooShop yahooShop)
    {
       if (responses == null || !responses.Any())
-         return new List<DailyOrderNewsYahoo>();
+         return [];
       // 対象プロパティ名の取得
       var validFields = AppModelHelpers.GetDailyOrderNewsFields();
 
       return responses.SelectMany(response =>
       {
          if (response?.ResultSet?.Result?.OrderInfo == null)
-            return Enumerable.Empty<DailyOrderNewsYahoo>();
+            return [];
 
          var orderInfo = response.ResultSet.Result.OrderInfo;
 
@@ -369,7 +387,7 @@ public static class DailyOrderNewsMapper
             .ToDictionary(pair => pair.Key, pair => pair.Value);
 
          // 1:N 関係の Items のマッピング
-         var items = orderInfo.Items ?? new List<YahooOrderInfoItem>();
+         var items = orderInfo.Items ?? [];
 
          return items.Select((item) =>
          {
@@ -403,11 +421,10 @@ public static class DailyOrderNewsMapper
    // マッピング処理（ I/F Model -> DB Model ）
    // DailyOrderNewsYahoo -> DailyOrderNews
    public static List<DailyOrderNews> YahooToDailyOrderNews(
-      List<DailyOrderNewsYahoo> source, 
-      string yahooShop, 
-      ssAppDBContext _dbContext)
+      List<DailyOrderNewsYahoo> source, string yahooShop, 
+      OrderStatus status, ssAppDBContext _dbContext)
    {
-      if (source?.Any() != true) return new List<DailyOrderNews>();
+      if (source?.Any() != true) return [];
 
       // 1. 同一OrderId内のOrderLineIdの最大値を計算
       var orderLineTotals = source
@@ -424,6 +441,7 @@ public static class DailyOrderNewsMapper
 
          var mappedItem = new DailyOrderNews
          {
+            Status = status.ToString(),                          // 注文ステータス
             ShopCode = yahooShop,                                // モール・ショップID
             ShipZip = item.ShipZipCode.Replace("-", ""),         // 出荷先郵便番号
             ShipPrefecture = item.ShipPrefecture,                // 出荷先都道府県
@@ -494,9 +512,7 @@ public static class DailyOrderNewsMapper
       if (target == null)
          throw new ArgumentNullException(nameof(target));
 
-      var property = typeof(T).GetProperty(propertyName);
-      if (property == null)
-         throw new ArgumentException($"Property '{propertyName}' not found on type '{typeof(T)}'.");
+      var property = typeof(T).GetProperty(propertyName) ?? throw new ArgumentException($"Property '{propertyName}' not found on type '{typeof(T)}'.");
 
       // プロパティに値を設定
       property.SetValue(target, value);

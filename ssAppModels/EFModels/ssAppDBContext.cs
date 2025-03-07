@@ -64,7 +64,11 @@ public partial class ssAppDBContext : DbContext
                 .IsFixedLength()
                 .HasComment("梱包配送コード");
             entity.Property(e => e.DeliveryFee).HasComment("配送料");
+            entity.Property(e => e.DeliveryName).HasComment("配送名");
             entity.Property(e => e.IsDeliveryLabel).HasComment("配送伝票出力");
+            entity.Property(e => e.LabelAddress1).HasComment("配送伝票の届け先住所１");
+            entity.Property(e => e.LabelAddress2).HasComment("配送伝票の届け先住所２");
+            entity.Property(e => e.LabelAddress3).HasComment("配送伝票の届け先住所３");
             entity.Property(e => e.LastOrderDate).HasComment("分割注文の最新注文日時");
             entity.Property(e => e.LineDeliveryCode)
                 .IsFixedLength()
@@ -106,6 +110,7 @@ public partial class ssAppDBContext : DbContext
             entity.Property(e => e.Skuabbr).HasComment("SKUの略称。簡易表示用");
             entity.Property(e => e.Skucode).HasComment("SKUの一意コード");
             entity.Property(e => e.Skuname).HasComment("SKUの正式な名称");
+            entity.Property(e => e.Status).HasComment("注文ステータス");
             entity.Property(e => e.TrackingNumber).HasComment("追跡用の伝票番号（追跡番号は各社12桁）");
         });
 

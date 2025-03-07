@@ -83,12 +83,12 @@ namespace ssAppModels.ApiModels
    public static class YahooOrderListRequestFactory
    {
       // DailyOrderNews用の出力フィールドリスト
-      public static readonly List<string> OutputFieldsDefault = new()
-      {
+      public static readonly List<string> OutputFieldsDefault =
+      [
          "OrderId",      // 注文ID
-      };
-      public static readonly List<string> OutputFieldsDebug = new()
-      {
+      ];
+      public static readonly List<string> OutputFieldsDebug =
+      [
          "OrderId",        // 注文ID
          "IsActive",       // 注文有効フラグ
          "IsSeen",         // 閲覧済みフラグ
@@ -97,9 +97,9 @@ namespace ssAppModels.ApiModels
          "PayStatus",      // 入金ステータス
          "SettleStatus",   // 決済ステータス
          "ShipStatus",     // 出荷ステータス
-      };
-      public static readonly List<string> OutputFieldsDebug2 = new()
-      {
+      ];
+      public static readonly List<string> OutputFieldsDebug2 =
+      [
          "OrderId",        // 注文ID
          "IsActive",       // 注文有効フラグ
          "IsSeen",         // 閲覧済みフラグ
@@ -110,7 +110,7 @@ namespace ssAppModels.ApiModels
          "ShipStatus",     // 出荷ステータス
          "ItemYahooAucId", // オークションID")
          "ItemYahooAucMerchantId"// Yahoo!オークション管理番号")
-      };
+      ];
 
       // 共通リクエスト生成メソッド
       private static YahooOrderListRequest CreateRequest(
@@ -231,14 +231,14 @@ namespace ssAppModels.ApiModels
    public class YahooOrderListSearch
    {
       public int TotalCount { get; set; } // 該当件数
-      public List<YahooOrderListOrderInfo> OrderInfo { get; set; } = new(); // 注文情報リスト
+      public List<YahooOrderListOrderInfo> OrderInfo { get; set; } = []; // 注文情報リスト
    }
 
    public class YahooOrderListOrderInfo
    {
       public int Index { get; set; }
-      public Dictionary<string, object> Fields { get; set; } = new();
-      public Dictionary<string, object>? Items { get; set; } = new();
+      public Dictionary<string, object> Fields { get; set; } = [];
+      public Dictionary<string, object>? Items { get; set; } = [];
    }
 
    /******************************************************************/

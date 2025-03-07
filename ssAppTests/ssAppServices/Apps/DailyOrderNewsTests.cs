@@ -21,6 +21,12 @@ public class DailyOrderNewsTests
    private SetDailyOrderNews _setDailyOrderNews;
    private YahooOrderList _yahooOrderList;
    private YahooOrderInfo _yahooOrderInfo;
+   private readonly DateTime startDT = new(2025, 3, 4, 0, 0, 0);
+   private readonly DateTime endDT = new(2025, 3, 5, 23, 59, 59);
+   //private readonly OrderStatus orderStatus = OrderStatus.NewOrder;
+   private readonly OrderStatus orderStatus = OrderStatus.Packing;
+   //private readonly OrderStatus orderStatus = OrderStatus.Shipped;
+
 
    [SetUp]
    public void SetUp()
@@ -55,7 +61,7 @@ public class DailyOrderNewsTests
    {
       foreach (YahooShop shop in Enum.GetValues(typeof(YahooShop)))
       {
-         Console.WriteLine($"● 検査ショップ： {shop.ToString()}");
+         Console.WriteLine($"● 検査ショップ： {shop}");
          Console.WriteLine("--------------------------------------------------");
 
          var (httpOrderList, orderList) = Run_YahooOrderSearch(shop);
@@ -77,13 +83,13 @@ public class DailyOrderNewsTests
 
          // orderListのデータ件数とhttpOrderListの件数が一致すること。Response件数はGetOrderListTotalで取得
          var rowNumber = YahooApiHelpers.GetOrderListTotal(httpOrderList);
-         Assert.That(orderIds.Count, Is.EqualTo(rowNumber), "orderListのデータ件数とhttpResponsesの件数が一致しません。");
+         Assert.That(orderIds, Has.Count.EqualTo(rowNumber), "orderListのデータ件数とhttpResponsesの件数が一致しません。");
 
          /******************************************************************************/
          // データ件数チェック
          // orderInfoのデータ件数とhttpResponsesの件数が一致すること。Response件数はGetOrderInfoItemCountで取得
          rowNumber = YahooApiHelpers.GetOrderInfoItemCount(httpResponses);
-         Assert.That(dailyOrderNews.Count, Is.EqualTo(rowNumber), "orderInfoのデータ件数とhttpResponsesの件数が一致しません。");
+         Assert.That(dailyOrderNews, Has.Count.EqualTo(rowNumber), "orderInfoのデータ件数とhttpResponsesの件数が一致しません。");
          Console.WriteLine($"データ件数（注文Item数）： {rowNumber}");
          Console.WriteLine("--------------------------------------------------");
 
@@ -132,9 +138,23 @@ public class DailyOrderNewsTests
    {
       foreach (YahooShop yahooShop in Enum.GetValues(typeof(YahooShop)))
       {
-         Console.WriteLine($"● 検査ショップ： {yahooShop.ToString()}");
+         Console.WriteLine($"● 検査ショップ： {yahooShop}");
          Console.WriteLine("--------------------------------------------------");
-         var (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop);
+
+         List<DailyOrderNewsYahoo> DON = null;
+         List<DailyOrderNews> DONY = null;
+         switch (orderStatus)
+         {
+            case OrderStatus.NewOrder:
+               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.NewOrder, null, null, UpdateMode.Replace);
+               break;
+            case OrderStatus.Packing:
+               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.Packing, null, null, UpdateMode.Replace);
+               break;
+            case OrderStatus.Shipped:
+               (DON, DONY) = _setDailyOrderNews.FetchDailyOrderFromYahoo(yahooShop, OrderStatus.Shipped, startDT, endDT, UpdateMode.Replace);
+               break;
+         }
          if (DON?.Any() == false || DONY?.Any() == false)
          {
             Console.WriteLine("注文情報がありません。");
@@ -149,19 +169,19 @@ public class DailyOrderNewsTests
          Assert.That(skuCodes, Has.None.Matches<string>(sku => skuCompare.Contains(sku)), "skuコンバートエラー");
          Console.WriteLine("Sku-Conversions：Success");
          Console.WriteLine("--------------------------------------------------");
-         Assert.That(DON.Count, Is.EqualTo(DONY.Count), "DailyOrderNewsとDailyOrderNewsYahooのデータ件数が一致しません。");
+         Assert.That(DON, Has.Count.EqualTo(DONY.Count), "DailyOrderNewsとDailyOrderNewsYahooのデータ件数が一致しません。");
 
          // DONYのデータ件数とDailyOrderNews.ShopCodeが"Yahoo"で始まる件数が一致すること
-         var yahooCount = _dbContext.DailyOrderNews.Count(x => x.ShopCode == yahooShop.ToString());
-         Assert.That(DONY.Count, Is.EqualTo(yahooCount), "DailyOrderNewsYahooのデータ件数とDailyOrderNews.ShopCodeの件数が一致しません。");
+         var yahooCount = _dbContext.DailyOrderNews.Count(x => x.ShopCode == yahooShop.ToString() && x.Status == orderStatus.ToString());
+         Assert.That(DONY, Has.Count.EqualTo(yahooCount), "DailyOrderNewsYahooのデータ件数とDailyOrderNews.ShopCodeの件数が一致しません。");
 
-         var orderIds = _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString())
+         var orderIds = _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString() && x.Status == orderStatus.ToString())
                .GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
 
          Console.WriteLine($"データ件数 Success： {orderIds.Count}");
          Console.WriteLine("--------------------------------------------------");
          int rowNumber = 1;
-         foreach (var r in _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString()))
+         foreach (var r in _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString() && x.Status == orderStatus.ToString()))
          {
             Console.WriteLine($"Row {rowNumber++} : {r.OrderId}, {r.OrderLineId}, {r.Skucode}");
             Console.WriteLine("--------------------------------------------------");
@@ -176,10 +196,23 @@ public class DailyOrderNewsTests
    {
       foreach (RakutenShop rakutenShop in Enum.GetValues(typeof(RakutenShop)))
       {
-         Console.WriteLine($"● 検査ショップ： {rakutenShop.ToString()}");
+         Console.WriteLine($"● 検査ショップ： {rakutenShop}");
          Console.WriteLine("--------------------------------------------------");
-         var (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop);
 
+         List<string> orderNumbers = null;
+         RakutenGetOrderResponse getOrderResponseTake100 = null;
+         switch (orderStatus)
+         {
+            case OrderStatus.NewOrder:
+               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.NewOrder, null, null, UpdateMode.Replace);
+               break;
+            case OrderStatus.Packing:
+               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.Packing, null, null, UpdateMode.Replace);
+               break;
+            case OrderStatus.Shipped:
+               (orderNumbers, getOrderResponseTake100) = _setDailyOrderNews.FetchDailyOrderFromRakuten(rakutenShop, OrderStatus.Shipped, startDT, endDT, UpdateMode.Replace);
+               break;
+         }
          // 注文情報が取得できない場合は処理を終了
          if (orderNumbers.Count == 0)
          {
@@ -196,15 +229,15 @@ public class DailyOrderNewsTests
          Console.WriteLine("--------------------------------------------------");
 
          // DailyOrderNewsのデータ件数とDailyOrderNews.ShopCodeが"Rakuten"で始まる件数が一致すること
-         var orderIds = _dbContext.DailyOrderNews.Where(x => x.ShopCode == rakutenShop.ToString())
+         var orderIds = _dbContext.DailyOrderNews.Where(x => x.ShopCode == rakutenShop.ToString() && x.Status == orderStatus.ToString())
             .GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
-         Assert.That(orderNumbers.Count, Is.EqualTo(orderIds.Count), $"DailyOrderNews {rakutenShop.ToString()} のデータ件数とDailyOrderNews.ShopCodeの件数が一致しません。");
+         Assert.That(orderNumbers, Has.Count.EqualTo(orderIds.Count), $"DailyOrderNews {rakutenShop} のデータ件数とDailyOrderNews.ShopCodeの件数が一致しません。");
          Assert.That(orderNumbers, Is.EquivalentTo(orderIds), "DailyOrderNewsのOrderNumberとSerchOrderで取得したOrderNumberが一致しない。");
 
          Console.WriteLine($"データ件数 Success： {orderNumbers.Count}");
          Console.WriteLine("--------------------------------------------------");
          int rowNumber = 1;
-         foreach (var r in _dbContext.DailyOrderNews.Where(x => x.ShopCode == rakutenShop.ToString()))
+         foreach (var r in _dbContext.DailyOrderNews.Where(x => x.ShopCode == rakutenShop.ToString() && x.Status == orderStatus.ToString()))
          {
             Console.WriteLine($"Row {rowNumber++} : {r.OrderId.Split('-').Skip(2).DefaultIfEmpty("").Aggregate((a, b) => a + "-" + b)}, {r.OrderLineId}, {r.Skucode}");
             Console.WriteLine("--------------------------------------------------");
@@ -259,108 +292,108 @@ public class DailyOrderNewsTests
          // #01
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 }
+            new() { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 }
          }, "003", 1),
          // #02
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200070-eb25", Skucode = "200070-eb25", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 1 }
+            new() { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 },
+            new() { ProductCode = "200070-eb25", Skucode = "200070-eb25", OrderQty = 1 },
+            new() { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 1 }
          }, "092", 1),
          // #03
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200070-eb25", Skucode = "200070-eb25", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 4 }
+            new() { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 },
+            new() { ProductCode = "200070-eb25", Skucode = "200070-eb25", OrderQty = 1 },
+            new() { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 4 }
          }, "092", 1),
          // #04
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200070-eb25", Skucode = "200070-eb25", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 9 }
+            new() { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 },
+            new() { ProductCode = "200070-eb25", Skucode = "200070-eb25", OrderQty = 1 },
+            new() { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 9 }
          }, "020", 1),
          // #05
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200070-eb25", Skucode = "200070-eb25", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 11 }
+            new() { ProductCode = "200070-eb10", Skucode = "200070-eb10", OrderQty = 1 },
+            new() { ProductCode = "200070-eb25", Skucode = "200070-eb25", OrderQty = 1 },
+            new() { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 11 }
          }, "020", 2),
          // #06
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200030", Skucode = "200030White", OrderQty = 1 }
+            new() { ProductCode = "200030", Skucode = "200030White", OrderQty = 1 }
          }, "092", 1),
          // #07
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200030", Skucode = "200030White", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200080", Skucode = "20008002Black-SKU", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200110", Skucode = "20011001Black", OrderQty = 1 }
+            new() { ProductCode = "200030", Skucode = "200030White", OrderQty = 1 },
+            new() { ProductCode = "200080", Skucode = "20008002Black-SKU", OrderQty = 1 },
+            new() { ProductCode = "200110", Skucode = "20011001Black", OrderQty = 1 }
          }, "020", 1),
          // #08
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200030", Skucode = "200030White", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200080", Skucode = "20008002Black-SKU", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200110", Skucode = "20011001Black", OrderQty = 2 }
+            new() { ProductCode = "200030", Skucode = "200030White", OrderQty = 1 },
+            new() { ProductCode = "200080", Skucode = "20008002Black-SKU", OrderQty = 1 },
+            new() { ProductCode = "200110", Skucode = "20011001Black", OrderQty = 2 }
          }, "020", 2),
          // #09
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200030", Skucode = "200030White", OrderQty = 6 },
-            new DailyOrderNews { ProductCode = "200080", Skucode = "20008002Black-SKU", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200110", Skucode = "20011001Black", OrderQty = 2 }
+            new() { ProductCode = "200030", Skucode = "200030White", OrderQty = 6 },
+            new() { ProductCode = "200080", Skucode = "20008002Black-SKU", OrderQty = 1 },
+            new() { ProductCode = "200110", Skucode = "20011001Black", OrderQty = 2 }
          }, "020", 3),
          // #10
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200160", Skucode = "200160S20W1P150C", OrderQty = 1 }
+            new() { ProductCode = "200160", Skucode = "200160S20W1P150C", OrderQty = 1 }
          }, "020", 1),
          // #11
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200160", Skucode = "200160S20W1P150C", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200160", Skucode = "200160S65W1P150L", OrderQty = 4 }
+            new() { ProductCode = "200160", Skucode = "200160S20W1P150C", OrderQty = 1 },
+            new() { ProductCode = "200160", Skucode = "200160S65W1P150L", OrderQty = 4 }
          }, "020", 2),
          // #12
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200160", Skucode = "200160S20W1P", OrderQty = 2 }
+            new() { ProductCode = "200160", Skucode = "200160S20W1P", OrderQty = 2 }
          }, "020", 1),
          // #13
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200160", Skucode = "200160S20W1P", OrderQty = 2 },
-            new DailyOrderNews { ProductCode = "200160", Skucode = "200160S65W3P", OrderQty = 10 }
+            new() { ProductCode = "200160", Skucode = "200160S20W1P", OrderQty = 2 },
+            new() { ProductCode = "200160", Skucode = "200160S65W3P", OrderQty = 10 }
          }, "020", 2),
          // #14
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 1 },
-            new DailyOrderNews { ProductCode = "200150", Skucode = "200150", OrderQty = 1 }
+            new() { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 1 },
+            new() { ProductCode = "200150", Skucode = "200150", OrderQty = 1 }
          }, "092", 1),
          // #15
          (new List<DailyOrderNews>
          {
-            new DailyOrderNews { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 13 },
-            new DailyOrderNews { ProductCode = "200150", Skucode = "200150", OrderQty = 1 }
+            new() { ProductCode = "200070-eb50", Skucode = "200070-eb50", OrderQty = 13 },
+            new() { ProductCode = "200150", Skucode = "200150", OrderQty = 1 }
          }, "020", 2),
       };
 
       int row = 1;
-      foreach (var scenario in testScenarios)
+      foreach (var (Items, ExpectedDeliveryCode, ExpectedPackingQty) in testScenarios)
       {
-         var (actualDeliveryCode, actualPackingQty) = DailyOrderNewsMapper.GetDeliveryCode(scenario.Items, RakutenShop.Rakuten_ENZO.ToString(), _dbContext);
-         Console.WriteLine($"Test Case #{row++}: {string.Join(", ", scenario.Items.Select(i => $"{i.ProductCode} ({i.OrderQty})"))}");
-         Console.WriteLine($"Expected: {scenario.ExpectedDeliveryCode}, {scenario.ExpectedPackingQty}");
+         var (actualDeliveryCode, actualPackingQty) = DailyOrderNewsMapper.GetDeliveryCode(Items, RakutenShop.Rakuten_ENZO.ToString(), _dbContext);
+         Console.WriteLine($"Test Case #{row++}: {string.Join(", ", Items.Select(i => $"{i.ProductCode} ({i.OrderQty})"))}");
+         Console.WriteLine($"Expected: {ExpectedDeliveryCode}, {ExpectedPackingQty}");
          Console.WriteLine($"Actual: {actualDeliveryCode}, {actualPackingQty}");
          Console.WriteLine("------------------------------------------------");
-         Assert.That(actualDeliveryCode, Is.EqualTo(scenario.ExpectedDeliveryCode));
-         Assert.That(actualPackingQty, Is.EqualTo(scenario.ExpectedPackingQty));
+         Assert.That(actualDeliveryCode, Is.EqualTo(ExpectedDeliveryCode));
+         Assert.That(actualPackingQty, Is.EqualTo(ExpectedPackingQty));
       }
    }
 

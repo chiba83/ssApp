@@ -15,6 +15,13 @@ public partial class DailyOrderNews
     public long Id { get; set; }
 
     /// <summary>
+    /// 注文ステータス
+    /// </summary>
+    [StringLength(15)]
+    [Unicode(false)]
+    public string Status { get; set; }
+
+    /// <summary>
     /// 分割注文の最新注文日時
     /// </summary>
     [Column(TypeName = "datetime")]
@@ -66,6 +73,24 @@ public partial class DailyOrderNews
     /// 正規化レベル
     /// </summary>
     public int? NormAddressLevel { get; set; }
+
+    /// <summary>
+    /// 配送伝票の届け先住所１
+    /// </summary>
+    [StringLength(100)]
+    public string LabelAddress1 { get; set; }
+
+    /// <summary>
+    /// 配送伝票の届け先住所２
+    /// </summary>
+    [StringLength(100)]
+    public string LabelAddress2 { get; set; }
+
+    /// <summary>
+    /// 配送伝票の届け先住所３
+    /// </summary>
+    [StringLength(100)]
+    public string LabelAddress3 { get; set; }
 
     /// <summary>
     /// 出荷先氏名
@@ -188,6 +213,12 @@ public partial class DailyOrderNews
     [StringLength(3)]
     [Unicode(false)]
     public string DeliveryCode { get; set; }
+
+    /// <summary>
+    /// 配送名
+    /// </summary>
+    [StringLength(15)]
+    public string DeliveryName { get; set; }
 
     /// <summary>
     /// 梱包数量
