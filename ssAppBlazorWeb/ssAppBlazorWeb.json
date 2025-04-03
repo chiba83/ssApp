@@ -1,0 +1,5 @@
+{
+  "ConnectionStrings": {
+    "ssAppDBContext": "Data Source=116.80.72.102;Initial Catalog=ssAppDB;Persist Security Info=True;User ID=ssSQL_Admin;Password=WcYkr@5525;Encrypt=False"
+  }
+}

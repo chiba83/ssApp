@@ -169,7 +169,7 @@ public class DailyOrderNewsTests
          // skuコンバートエラー
          var skuCodes = _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString()).GroupBy(x => x.Skucode).Select(x => x.Key).ToList();
          var skuCompare = _dbContext.Skuconversions
-               .Where(x => x.ShopCode == yahooShop.ToString() && x.Skucode != x.ShopSkucode).Select(x => x.ShopSkucode).ToList();
+            .Where(x => x.ShopCode == yahooShop.ToString() && x.Skucode != x.ShopSkucode).Select(x => x.ShopSkucode).ToList();
          Assert.That(skuCodes, Has.None.Matches<string>(sku => skuCompare.Contains(sku)), "skuコンバートエラー");
          Console.WriteLine("Sku-Conversions：Success");
          Console.WriteLine("--------------------------------------------------");
@@ -180,7 +180,7 @@ public class DailyOrderNewsTests
          Assert.That(DONY, Has.Count.EqualTo(yahooCount), "DailyOrderNewsYahooのデータ件数とDailyOrderNews.ShopCodeの件数が一致しません。");
 
          var orderIds = _dbContext.DailyOrderNews.Where(x => x.ShopCode == yahooShop.ToString() && x.Status == orderStatus.ToString())
-               .GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
+            .GroupBy(x => x.OrderId).Select(x => x.Key).ToList();
 
          Console.WriteLine($"データ件数 Success： {orderIds.Count}");
          Console.WriteLine("--------------------------------------------------");

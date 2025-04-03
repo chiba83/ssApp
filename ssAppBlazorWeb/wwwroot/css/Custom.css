@@ -1,0 +1,37 @@
+﻿/* 明細セル非表示 */
+.mud-table-cell.hide-column {
+  width: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  visibility: collapse !important;
+  display: none !important;
+}
+
+/* ヘッダーセルを完全に潰す */
+.mud-table-header-cell.hide-column {
+  width: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  visibility: collapse !important;
+  display: none !important;
+}
+
+/* SF Grid Row・Columnフォーカスアウトラインを無効化 */
+/* SF Grid Group Rowのフォーカスアウトラインを無効化 */
+/* SF Grid Groupの展開/折りたたみボタンのフォーカス時の枠線を無効化 */
+/*.e-grid td.e-rowcell.e-focus.e-focused,
+.e-grid th.e-headercell.e-focus.e-focused,
+.e-grid td.e-groupcaption .e-focus.e-focused {
+  box-shadow: none;
+}
+.e-grid .e-groupcaption.e-focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.e-grid .e-focused:not(.e-menu-item):not(.e-editedbatchcell) {
+  box-shadow: none !important;
+}*/

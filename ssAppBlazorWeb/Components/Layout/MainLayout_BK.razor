@@ -1,0 +1,96 @@
+﻿@inherits LayoutComponentBase
+@using Syncfusion.Blazor.Navigations
+@using Microsoft.AspNetCore.Components.Web
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: var(--e-background-color);
+    color: var(--e-on-background-color);
+    overflow: hidden;
+  }
+
+  .layout-root {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .appbar {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    background-color: var(--e-surface-color);
+    color: var(--e-on-surface-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    position: relative;
+  }
+
+  .layout-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .main-content {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    background-color: var(--e-surface-color);
+    color: var(--e-on-surface-color);
+  }
+
+  .e-sidebar-menu {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-y: auto;
+  }
+</style>
+
+<div class="layout-root e-dark-mode">
+  <!-- Top App Bar -->
+  <div class="appbar">
+    <button class="e-btn e-flat e-primary" @onclick="() => ToggleSidebar()">
+      <span class="e-icons e-menu"></span>
+    </button>
+    <span style="margin-left: 10px; font-size: 1.25rem;">T字レイアウト</span>
+  </div>
+
+  <!-- Sidebar + Main -->
+  <div class="layout-body">
+    <SfSidebar @bind-IsOpen="_sidebarOpen"
+               Width="250px"
+               EnableDock="false"
+               DockSize="0px"
+               Type="SidebarType.Push"
+               MediaQuery="(min-width: 600px)"
+               Position="SidebarPosition.Left"
+               Target=".main-content">
+      <ChildContent>
+        <ul class="e-sidebar-menu">
+          <li class="e-menu-item"><a href="/" class="e-menu-text"><span class="e-icons e-home"></span> Home</a></li>
+          <li class="e-menu-item"><a href="/neworders" class="e-menu-text"><span class="e-icons e-cart"></span> New Orders</a></li>
+          <li class="e-menu-item"><a href="/weather" class="e-menu-text"><span class="e-icons e-cloud"></span> Weather</a></li>
+        </ul>
+      </ChildContent>
+    </SfSidebar>
+
+    <div class="main-content">
+      @Body
+    </div>
+  </div>
+</div>
+
+@code {
+  private bool _sidebarOpen = true;
+
+  private void ToggleSidebar()
+  {
+    _sidebarOpen = !_sidebarOpen;
+  }
+}

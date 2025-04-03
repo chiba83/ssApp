@@ -5,7 +5,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- base href を動的に設定（本番: /index/, 開発: /） -->
   <script>
     (function () {
       const isProd = window.location.pathname.startsWith("/index");
@@ -15,9 +14,11 @@
     })();
   </script>
 
+  <!-- material3 に一本化（切替用） -->
+  <link id="syncfusion-theme" href="_content/Syncfusion.Blazor.Themes/material3-dark.css" rel="stylesheet" />
+@*   <link id="syncfusion-theme" href="_content/Syncfusion.Blazor.Themes/material3.css" rel="stylesheet" />
+ *@
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
-  <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
-  <link id="syncfusion-theme" href="_content/Syncfusion.Blazor.Themes/material.css" rel="stylesheet" />
   <link href="css/Custom.css" rel="stylesheet" />
   <link rel="icon" type="image/ico" href="favicon.ico" />
 
@@ -26,8 +27,9 @@
 
 <body>
   <Routes @rendermode="InteractiveServer" />
+
   <script src="_framework/blazor.web.js"></script>
-  <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+  <script src="_content/Syncfusion.Blazor/scripts/syncfusion-blazor.min.js"></script>
 </body>
 
 </html>

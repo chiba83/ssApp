@@ -1,0 +1,40 @@
+﻿@using Syncfusion.Blazor.Navigations
+
+<SfSidebar @bind-IsOpen="DrawerOpen"
+           Width="240px"
+           Target=".main-layout"
+           Type="SidebarType.Push"
+           EnableDock="true"
+           DockSize="72px">
+
+  <ChildContent>
+    <ul class="e-sidebar-menu">
+      <li class="e-menu-item">
+        <a href="/" class="e-menu-text"><span class="e-icons e-home me-2"></span>Home</a>
+      </li>
+      <li class="e-menu-item">
+        <a href="/neworders" class="e-menu-text"><span class="e-icons e-cart me-2"></span>New Orders</a>
+      </li>
+      <li class="e-menu-item">
+        <a href="/neworders2" class="e-menu-text"><span class="e-icons e-cart me-2"></span>New Orders 2</a>
+      </li>
+      <li class="e-menu-item">
+        <a href="/counter" class="e-menu-text"><span class="e-icons e-add me-2"></span>Counter</a>
+      </li>
+      <li class="e-menu-item">
+        <a href="/weather" class="e-menu-text"><span class="e-icons e-cloud me-2"></span>Weather</a>
+      </li>
+    </ul>
+  </ChildContent>
+</SfSidebar>
+
+@code {
+  [Parameter] public bool DrawerOpen { get; set; }
+  [Parameter] public EventCallback<bool> DrawerOpenChanged { get; set; }
+
+  private async Task ToggleDrawer()
+  {
+    DrawerOpen = !DrawerOpen;
+    await DrawerOpenChanged.InvokeAsync(DrawerOpen);
+  }
+}

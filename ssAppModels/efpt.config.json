@@ -35,6 +35,10 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[OrderHistory]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Product]",
          "ObjectType": 0
       },
@@ -96,6 +100,7 @@
    "UseHandleBars": false,
    "UseHierarchyId": false,
    "UseInflector": true,
+   "UseInternalAccessModifiersForSprocsAndFunctions": false,
    "UseLegacyPluralizer": false,
    "UseManyToManyEntity": false,
    "UseNoDefaultConstructor": true,

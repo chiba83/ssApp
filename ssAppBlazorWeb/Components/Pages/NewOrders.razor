@@ -1,0 +1,95 @@
+﻿@page "/neworders"
+
+@using ssAppModels.EFModels
+@using Microsoft.EntityFrameworkCore
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Buttons
+@using Extensions
+@using AutoMapper
+
+@inject ssAppDBContext DbContext
+@inject IMapper Mapper
+
+<PageTitle>New Orders</PageTitle>
+
+<h4>aaこれはテストですよこれはテストですよこれはテストですよaa</h4>
+
+<div style="display:flex;gap:10px">
+  <label> 行を折りたたむ </label>
+  <SfSwitch @bind-Checked="isChecked" OffLabel="OFF" OnLabel="ON" ValueChange="Change" TChecked="bool?"></SfSwitch>
+</div>
+
+<SfGrid @ref="gridRef" DataSource="@newOrders" Height="700px"
+        EnableHover="false"
+        AllowSelection="false"
+        AllowGrouping="true"
+        AllowSorting="false">
+
+  <GridGroupSettings ShowDropArea="false" AllowReordering="false" Columns="@(new[] { "GroupKey" })">
+    <CaptionTemplate>
+      @{
+        var group = context as CaptionTemplateContext;
+        <span>@group?.Key</span>
+      }
+    </CaptionTemplate>
+  </GridGroupSettings>
+
+  <GridSortSettings>
+    <GridSortColumns>
+      <GridSortColumn Field="GroupKey" Direction="Syncfusion.Blazor.Grids.SortDirection.Descending" />
+    </GridSortColumns>
+  </GridSortSettings>
+
+  <GridEvents DataBound="DataBoundHandler" TValue="NewOrder" />
+
+  <GridColumns>
+    <GridColumn Field="OrderId" HeaderText="Order ID" />
+    <GridColumn Field="Skucode" HeaderText="Product" />
+    <GridColumn Field="Skuabbr" HeaderText="Name" />
+    <GridColumn Field="OrderQty" HeaderText="QTY" TextAlign="TextAlign.Right" />
+    <GridColumn Field="GroupKey" Visible="false" AllowGrouping="false" />
+  </GridColumns>
+</SfGrid>
+
+@code {
+  private List<NewOrder> newOrders = new();
+  private int groupCount;
+  public bool initial = true;
+  private bool? isChecked = true;
+  private SfGrid<NewOrder> gridRef = new SfGrid<NewOrder>();
+
+  protected override async Task OnInitializedAsync()
+  {
+    var source = await DbContext.DailyOrderNews
+      .Where(x => x.Status == "NewOrder")
+      .OrderByDescending(x => x.LastOrderDate)
+      .ToListAsync();
+
+    newOrders = source.Select(x =>
+    {
+      var mapped = Mapper.Map<NewOrder>(x);
+      mapped.GroupKey = $"{x.LastOrderDate:yy/MM/dd HH:mm:ss} / {x.ShopCode} / {x.ShipPrefecture} / {x.ShipName} / {(x.PackingId?.Split('-').Last() ?? "")}";
+      mapped.OrderId = x.OrderId?.Split('-').Last() ?? "";
+      return mapped;
+    }).ToList();
+
+    groupCount = newOrders.Select(x => x.GroupKey).Distinct().Count();
+  }
+
+  public async Task DataBoundHandler()
+  {
+    if (initial == true)
+    {
+      await gridRef.CollapseAllGroupAsync();
+      initial = false;
+    }
+  }
+
+  private async Task Change(Syncfusion.Blazor.Buttons.ChangeEventArgs<bool?> args)
+  {
+    if (isChecked == true)
+      await gridRef.CollapseAllGroupAsync();
+    else
+      await gridRef.ExpandAllGroupAsync();
+  }
+}

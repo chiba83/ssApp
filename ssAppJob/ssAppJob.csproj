@@ -24,4 +24,8 @@
     <ProjectReference Include="..\ssAppServices\ssAppServices.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Jobs\Backup\" />
+  </ItemGroup>
+
 </Project>
