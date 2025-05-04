@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using ssAppModels;
 using Microsoft.Extensions.Configuration;
 using ssAppModels.EFModels;
-using Syncfusion.Blazor;
+using ssAppBlazorWeb.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Syncfusionサービス登録（ライセンス登録）
-Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("MzgwMjQzNkAzMjM5MmUzMDJlMzAzYjMyMzkzYmJyL3RSVTZveElGcEhVUkladCtHOURDV2VtOU5jNFo1SkNXVHlZWnc4Z2s9");
-builder.Services.AddSyncfusionBlazor();
+//Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("MzgwMjQzNkAzMjM5MmUzMDJlMzAzYjMyMzkzYmJyL3RSVTZveElGcEhVUkladCtHOURDV2VtOU5jNFo1SkNXVHlZWnc4Z2s9");
+//builder.Services.AddSyncfusionBlazor();
 
 // JSON構成ファイル（ssAppBlazorWeb.json）を追加読み込み
 builder.Configuration.AddJsonFile("ssAppBlazorWeb.json", optional: false, reloadOnChange: true);

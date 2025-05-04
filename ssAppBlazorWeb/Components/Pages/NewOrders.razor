@@ -2,94 +2,175 @@
 
 @using ssAppModels.EFModels
 @using Microsoft.EntityFrameworkCore
-@using Syncfusion.Blazor.Grids
-@using Syncfusion.Blazor.Buttons
-@using Extensions
+@using ssAppBlazorWeb.Extensions
 @using AutoMapper
 
 @inject ssAppDBContext DbContext
 @inject IMapper Mapper
+@inject IJSRuntime JS
 
 <PageTitle>New Orders</PageTitle>
 
-<h4>aaこれはテストですよこれはテストですよこれはテストですよaa</h4>
+<MudText Class="my-2" Typo="Typo.h6">New Orders ( @newOrdersInitial.Select(x => x.PackingId).Distinct().Count().ToString("#,##0") )</MudText>
 
-<div style="display:flex;gap:10px">
-  <label> 行を折りたたむ </label>
-  <SfSwitch @bind-Checked="isChecked" OffLabel="OFF" OnLabel="ON" ValueChange="Change" TChecked="bool?"></SfSwitch>
+<div id="@headerElementId">
+  <MudGrid>
+    <MudItem xs="12" sm="6" md="6">
+      <MudSelect T="string" MultiSelection="true" SelectAll="true" Label="Products"
+      Margin="Margin.Dense" SelectAllText="Select all Products" Variant="Variant.Outlined" ShrinkLabel
+      HelperText="@helperText" SelectedValues="@options"
+      SelectedValuesChanged="OnSelectProducts"
+      MultiSelectionTextFunc="@(new Func<List<string>, string>(GetMultiSelectionText))">
+        @foreach (var sku in newOrdersInitial.GroupBy(g => $"{g.Skucode} : {g.Skuabbr}")
+        .Select(x => x.Key).OrderBy(x => x))
+        {
+          <MudSelectItem T="string" Value="@sku">@sku</MudSelectItem>
+        }
+      </MudSelect>
+    </MudItem>
+    <MudItem xs="6" sm="2" md="2">
+      <MudCheckBox T="bool" Value="_isMultiProducts" ValueChanged="OnMultiProducts" Size="Size.Medium">
+        <MudChip T="string" Icon="@Icons.Material.Filled.PostAdd" Color="Color.Secondary" Size="Size.Small">Multi</MudChip>
+      </MudCheckBox>
+    </MudItem>
+    <MudItem xs="6" sm="4" md="4">
+      <MudCheckBox T="bool" Value="_isShowOrders" ValueChanged="OnExpandCollapse" Size="Size.Medium">Show Orders</MudCheckBox>
+    </MudItem>
+  </MudGrid>
 </div>
 
-<SfGrid @ref="gridRef" DataSource="@newOrders" Height="700px"
-        EnableHover="false"
-        AllowSelection="false"
-        AllowGrouping="true"
-        AllowSorting="false">
+<MudDivider Class="mt-5" />
 
-  <GridGroupSettings ShowDropArea="false" AllowReordering="false" Columns="@(new[] { "GroupKey" })">
-    <CaptionTemplate>
-      @{
-        var group = context as CaptionTemplateContext;
-        <span>@group?.Key</span>
-      }
-    </CaptionTemplate>
-  </GridGroupSettings>
+<MudDataGrid Class="custom-grid-group" @ref="dataGrid" T="Order" Items="@newOrders"
+  MultiSelection="true" Hideable="true" Groupable="true" GroupExpanded="false" FixedHeader="true"
+  Height="@DataGridHeight" GroupClassFunc="GroupClassFunc" ColumnResizeMode="ResizeMode.Column">
 
-  <GridSortSettings>
-    <GridSortColumns>
-      <GridSortColumn Field="GroupKey" Direction="Syncfusion.Blazor.Grids.SortDirection.Descending" />
-    </GridSortColumns>
-  </GridSortSettings>
+  <Columns>
+    <PropertyColumn Property="x => x.OrderDateForGrid" Title="Order Date" />
+    <PropertyColumn Property="x => x.OrderIdForGrid" Title="Order ID" />
+    <PropertyColumn Property="x => x.Skucode" Title="Product ID" />
+    <PropertyColumn Property="x => x.Skuabbr" Title="Product" />
+    <PropertyColumn Property="x => x.OrderQty" Title="QTY"/>
+    <PropertyColumn Property="x => x.GroupKey" Grouping="true" hidden="true" Hideable="false">
+      <GroupTemplate>
+        <MudText Typo="Typo.subtitle2" Inline="true">
+          <MudChip Icon="@Icons.Material.Filled.PostAdd" Color="Color.Secondary" Size="Size.Small"
+          Class="@(context.Grouping.Any(x => x.MultiOrders) ? "me-2" : "invisible-chip me-2")">
+            Multi
+          </MudChip>
+          @context.Grouping.Key
+        </MudText>
+      </GroupTemplate>
+    </PropertyColumn>
+  </Columns>
 
-  <GridEvents DataBound="DataBoundHandler" TValue="NewOrder" />
-
-  <GridColumns>
-    <GridColumn Field="OrderId" HeaderText="Order ID" />
-    <GridColumn Field="Skucode" HeaderText="Product" />
-    <GridColumn Field="Skuabbr" HeaderText="Name" />
-    <GridColumn Field="OrderQty" HeaderText="QTY" TextAlign="TextAlign.Right" />
-    <GridColumn Field="GroupKey" Visible="false" AllowGrouping="false" />
-  </GridColumns>
-</SfGrid>
+</MudDataGrid>
 
 @code {
-  private List<NewOrder> newOrders = new();
-  private int groupCount;
-  public bool initial = true;
-  private bool? isChecked = true;
-  private SfGrid<NewOrder> gridRef = new SfGrid<NewOrder>();
+  private DotNetObjectReference<NewOrders>? dotNetRef;
+
+  private List<Order> newOrders = new();
+  private List<Order> newOrdersInitial = new();
+  private int orderCount;
+  private MudDataGrid<Order> dataGrid = new();
+  private bool _isMultiProducts { get; set; } = false;
+  private List<string> _selectProducts { get; set; } = new();
+  private bool _isShowOrders { get; set; } = false;
+  private IEnumerable<string> options { get; set; } = new HashSet<string>();
+  private int skuCount;
+  private string helperText = string.Empty;
+
+  private string headerElementId = "page-header";
+  private int WindowHeight = 800;
+  private int HeaderHeight = 180;
+  private string DataGridHeight => $"{Math.Max((int)((WindowHeight - HeaderHeight - 110) * 0.95), 160)}px";
+
+  private string GroupClassFunc(GroupDefinition<Order> item) => string.Empty;
+
+  [JSInvokable]
+  public void OnResize(int windowHeight, int headerHeight)
+  {
+    WindowHeight = windowHeight;
+    HeaderHeight = headerHeight;
+    StateHasChanged();
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (firstRender)
+    {
+      dotNetRef = DotNetObjectReference.Create(this);
+      WindowHeight = await JS.InvokeAsync<int>("resizeHelper.getWindowHeight");
+      HeaderHeight = await JS.InvokeAsync<int>("resizeHelper.getElementHeight", headerElementId);
+      await JS.InvokeVoidAsync("resizeHelper.registerResizeCallback", dotNetRef, headerElementId);
+      StateHasChanged();
+    }
+  }
 
   protected override async Task OnInitializedAsync()
   {
     var source = await DbContext.DailyOrderNews
       .Where(x => x.Status == "NewOrder")
-      .OrderByDescending(x => x.LastOrderDate)
       .ToListAsync();
 
-    newOrders = source.Select(x =>
-    {
-      var mapped = Mapper.Map<NewOrder>(x);
-      mapped.GroupKey = $"{x.LastOrderDate:yy/MM/dd HH:mm:ss} / {x.ShopCode} / {x.ShipPrefecture} / {x.ShipName} / {(x.PackingId?.Split('-').Last() ?? "")}";
-      mapped.OrderId = x.OrderId?.Split('-').Last() ?? "";
-      return mapped;
-    }).ToList();
+    newOrders = Mapper.Map<List<Order>>(source)
+      .Select(order =>
+      {
+        var group = source.Where(x => x.PackingId == order.PackingId);
+        order.MultiOrders = group.Count() > 1 || group.Max(x => x.OrderQty) > 1;
+        return order;
+      })
+      .OrderByDescending(x => x.LastOrderDate).ThenByDescending(x => x.OrderDate)
+      .ToList();
 
-    groupCount = newOrders.Select(x => x.GroupKey).Distinct().Count();
+    newOrdersInitial = newOrders;
+    orderCount = source.Select(x => x.PackingId).Distinct().Count();
+    options = newOrders.GroupBy(g => $"{g.Skucode} : {g.Skuabbr}").Select(x => x.Key).OrderBy(x => x).ToHashSet();
+    skuCount = options.Count();
   }
 
-  public async Task DataBoundHandler()
-  {
-    if (initial == true)
-    {
-      await gridRef.CollapseAllGroupAsync();
-      initial = false;
-    }
-  }
+  public void Dispose() => dotNetRef?.Dispose();
 
-  private async Task Change(Syncfusion.Blazor.Buttons.ChangeEventArgs<bool?> args)
+  private string GetMultiSelectionText(List<string> selectedValues)
   {
-    if (isChecked == true)
-      await gridRef.CollapseAllGroupAsync();
+    bool isAll = selectedValues.Count == skuCount;
+    bool isNone = selectedValues.Count == 0;
+    string message = isAll ? "Selected all products" : isNone ? "Nothing selected" : $"Selected Product{(selectedValues.Count > 1 ? "s" : "")}: ";
+
+		helperText = isAll || isNone ? message : $"{message}{string.Join(", ", selectedValues.Select(x => x))}";
+    return       isAll || isNone ? message : $"{message}( {selectedValues.Count} / {skuCount} )";
+}
+
+  private void OnExpandCollapse(bool isChecked)
+  {
+    _isShowOrders = isChecked;
+    if (_isShowOrders)
+      dataGrid?.ExpandAllGroupsAsync();
     else
-      await gridRef.ExpandAllGroupAsync();
+      dataGrid?.CollapseAllGroupsAsync();
+  }
+
+  private async Task OnMultiProducts(bool isChecked)
+  {
+    _isMultiProducts = isChecked;
+    await GenerateFilteredQuery();
+  }
+
+  private async Task OnSelectProducts(IEnumerable<string> selected)
+  {
+    options = selected.ToList();
+    _selectProducts = selected.Select(s => s.Split(':')[0].Trim()).ToList();
+    await GenerateFilteredQuery();
+  }
+
+  private async Task GenerateFilteredQuery()
+  {
+    newOrders = newOrdersInitial
+      .Where(order => (!_isMultiProducts || order.MultiOrders) &&
+        _selectProducts.Any(k => order.PackingSort?.Contains(k) == true))
+      .ToList();
+
+    await Task.Delay(1);
+    OnExpandCollapse(_isShowOrders);
   }
 }
