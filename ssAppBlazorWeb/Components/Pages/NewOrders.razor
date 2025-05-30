@@ -17,10 +17,10 @@
   <MudGrid>
     <MudItem xs="12" sm="6" md="6">
       <MudSelect T="string" MultiSelection="true" SelectAll="true" Label="Products"
-      Margin="Margin.Dense" SelectAllText="Select all Products" Variant="Variant.Outlined" ShrinkLabel
-      HelperText="@helperText" SelectedValues="@options"
-      SelectedValuesChanged="OnSelectProducts"
-      MultiSelectionTextFunc="@(new Func<List<string>, string>(GetMultiSelectionText))">
+        Margin="Margin.Dense" SelectAllText="Select all Products" Variant="Variant.Outlined" ShrinkLabel
+        HelperText="@helperText" SelectedValues="@options"
+        SelectedValuesChanged="OnSelectProducts"
+        MultiSelectionTextFunc="@(new Func<List<string>, string>(GetMultiSelectionText))">
         @foreach (var sku in newOrdersInitial.GroupBy(g => $"{g.Skucode} : {g.Skuabbr}")
         .Select(x => x.Key).OrderBy(x => x))
         {
@@ -43,7 +43,7 @@
 
 <MudDataGrid Class="custom-grid-group" @ref="dataGrid" T="Order" Items="@newOrders"
   MultiSelection="true" Hideable="true" Groupable="true" GroupExpanded="false" FixedHeader="true"
-  Height="@DataGridHeight" GroupClassFunc="GroupClassFunc" ColumnResizeMode="ResizeMode.Column">
+  Height="@DataGridHeight" GroupClassFunc="GroupClassFunc" >
 
   <Columns>
     <PropertyColumn Property="x => x.OrderDateForGrid" Title="Order Date" />
@@ -55,7 +55,7 @@
       <GroupTemplate>
         <MudText Typo="Typo.subtitle2" Inline="true">
           <MudChip Icon="@Icons.Material.Filled.PostAdd" Color="Color.Secondary" Size="Size.Small"
-          Class="@(context.Grouping.Any(x => x.MultiOrders) ? "me-2" : "invisible-chip me-2")">
+            Class="@(context.Grouping.Any(x => x.MultiOrders) ? "me-2" : "invisible-chip me-2")">
             Multi
           </MudChip>
           @context.Grouping.Key
@@ -139,7 +139,7 @@
 
 		helperText = isAll || isNone ? message : $"{message}{string.Join(", ", selectedValues.Select(x => x))}";
     return       isAll || isNone ? message : $"{message}( {selectedValues.Count} / {skuCount} )";
-}
+  }
 
   private void OnExpandCollapse(bool isChecked)
   {
